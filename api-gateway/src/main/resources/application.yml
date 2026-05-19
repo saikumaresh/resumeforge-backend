@@ -1,0 +1,39 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      routes:
+        - id: resume-service
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/v1/resumes/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@ipKeyResolver}"
+        - id: worker-service
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/v1/exports/**
+      default-filters:
+        - AddRequestHeader=X-Gateway-Source, resumeforge-gateway
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG

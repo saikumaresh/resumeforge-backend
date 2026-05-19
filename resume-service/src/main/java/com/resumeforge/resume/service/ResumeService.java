@@ -1,0 +1,161 @@
+package com.resumeforge.resume.service;
+
+import com.resumeforge.resume.dto.*;
+import com.resumeforge.resume.kafka.event.TailoringRequestedEvent;
+import com.resumeforge.resume.kafka.producer.TailoringProducer;
+import com.resumeforge.resume.model.*;
+import com.resumeforge.resume.repository.*;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+@Slf4j
+public class ResumeService {
+
+    private final MasterResumeRepository masterResumeRepository;
+    private final JobDescriptionRepository jobDescriptionRepository;
+    private final TailoredResumeRepository tailoredResumeRepository;
+    private final TailoringProducer tailoringProducer;
+    private final Counter tailoringRequestCounter;
+
+    public ResumeService(MasterResumeRepository masterResumeRepository,
+                         JobDescriptionRepository jobDescriptionRepository,
+                         TailoredResumeRepository tailoredResumeRepository,
+                         TailoringProducer tailoringProducer,
+                         MeterRegistry meterRegistry) {
+        this.masterResumeRepository = masterResumeRepository;
+        this.jobDescriptionRepository = jobDescriptionRepository;
+        this.tailoredResumeRepository = tailoredResumeRepository;
+        this.tailoringProducer = tailoringProducer;
+        this.tailoringRequestCounter = Counter.builder("resumeforge.tailoring.requests")
+                .description("Total number of resume tailoring requests")
+                .register(meterRegistry);
+    }
+
+    @Transactional
+    public MasterResumeResponse createMasterResume(UUID userId, CreateMasterResumeRequest request) {
+        MDC.put("userId", userId.toString());
+        log.info("Creating master resume for user={}", userId);
+
+        MasterResume resume = MasterResume.builder()
+                .userId(userId)
+                .title(request.getTitle())
+                .summary(request.getSummary())
+                .build();
+
+        if (request.getSections() != null) {
+            List<MasterResumeSection> sections = request.getSections().stream()
+                    .map(s -> MasterResumeSection.builder()
+                            .masterResume(resume)
+                            .sectionType(MasterResumeSection.SectionType.valueOf(s.getSectionType()))
+                            .content(s.getContent())
+                            .position(s.getPosition())
+                            .build())
+                    .collect(Collectors.toList());
+            resume.setSections(sections);
+        }
+
+        MasterResume saved = masterResumeRepository.save(resume);
+        log.info("Master resume created resumeId={}", saved.getId());
+        MDC.clear();
+        return toMasterResumeResponse(saved);
+    }
+
+    public List<MasterResumeResponse> getMasterResumes(UUID userId) {
+        return masterResumeRepository.findByUserId(userId).stream()
+                .map(this::toMasterResumeResponse)
+                .collect(Collectors.toList());
+    }
+
+    public MasterResumeResponse getMasterResumeWithSections(UUID resumeId) {
+        MasterResume resume = masterResumeRepository.findByIdWithSections(resumeId)
+                .orElseThrow(() -> new RuntimeException("Resume not found: " + resumeId));
+        return toMasterResumeResponse(resume);
+    }
+
+    @Transactional
+    public TailoredResumeResponse triggerTailoring(UUID masterResumeId, TailorResumeRequest request) {
+        MDC.put("masterResumeId", masterResumeId.toString());
+
+        MasterResume masterResume = masterResumeRepository.findByIdWithSections(masterResumeId)
+                .orElseThrow(() -> new RuntimeException("Master resume not found: " + masterResumeId));
+
+        JobDescription jd = JobDescription.builder()
+                .userId(request.getUserId())
+                .companyName(request.getCompanyName())
+                .jobTitle(request.getJobTitle())
+                .description(request.getJobDescription())
+                .requiredSkills(request.getRequiredSkills())
+                .build();
+        JobDescription savedJd = jobDescriptionRepository.save(jd);
+
+        TailoredResume tailoredResume = TailoredResume.builder()
+                .masterResume(masterResume)
+                .jobDescription(savedJd)
+                .status(TailoredResume.TailoringStatus.PENDING)
+                .build();
+        TailoredResume saved = tailoredResumeRepository.save(tailoredResume);
+
+        String masterContent = masterResume.getSections().stream()
+                .map(s -> s.getSectionType() + ":\n" + s.getContent())
+                .collect(Collectors.joining("\n\n"));
+
+        TailoringRequestedEvent event = new TailoringRequestedEvent(
+                saved.getId(), masterResumeId, savedJd.getId(),
+                request.getUserId(), masterContent, request.getJobDescription()
+        );
+        tailoringProducer.publish(event);
+        tailoringRequestCounter.increment();
+
+        log.info("Tailoring triggered tailoredResumeId={} jobTitle={}", saved.getId(), request.getJobTitle());
+        MDC.clear();
+        return toTailoredResumeResponse(saved);
+    }
+
+    public TailoredResumeResponse getTailoredResume(UUID tailoredResumeId) {
+        TailoredResume resume = tailoredResumeRepository.findById(tailoredResumeId)
+                .orElseThrow(() -> new RuntimeException("Tailored resume not found: " + tailoredResumeId));
+        return toTailoredResumeResponse(resume);
+    }
+
+    private MasterResumeResponse toMasterResumeResponse(MasterResume r) {
+        MasterResumeResponse resp = new MasterResumeResponse();
+        resp.setId(r.getId());
+        resp.setUserId(r.getUserId());
+        resp.setTitle(r.getTitle());
+        resp.setSummary(r.getSummary());
+        resp.setVersion(r.getVersion());
+        resp.setCreatedAt(r.getCreatedAt());
+        if (r.getSections() != null) {
+            resp.setSections(r.getSections().stream().map(s -> {
+                MasterResumeResponse.SectionResponse sr = new MasterResumeResponse.SectionResponse();
+                sr.setId(s.getId());
+                sr.setSectionType(s.getSectionType().name());
+                sr.setContent(s.getContent());
+                sr.setPosition(s.getPosition());
+                return sr;
+            }).collect(Collectors.toList()));
+        }
+        return resp;
+    }
+
+    private TailoredResumeResponse toTailoredResumeResponse(TailoredResume r) {
+        TailoredResumeResponse resp = new TailoredResumeResponse();
+        resp.setId(r.getId());
+        resp.setMasterResumeId(r.getMasterResume().getId());
+        resp.setJobDescriptionId(r.getJobDescription().getId());
+        resp.setStatus(r.getStatus().name());
+        resp.setPdfDownloadUrl(r.getPdfPath() != null ? "/api/v1/exports/" + r.getId() + "/pdf" : null);
+        if (r.getAtsScoreResult() != null) {
+            resp.setAtsScore(r.getAtsScoreResult().getTotalScore());
+        }
+        resp.setCreatedAt(r.getCreatedAt());
+        return resp;
+    }
+}

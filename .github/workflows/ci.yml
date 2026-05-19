@@ -1,0 +1,45 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop, 'feature/**' ]
+  pull_request:
+    branches: [ develop, main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build all modules
+        run: mvn clean compile -f pom.xml -B
+
+      - name: Run unit tests
+        run: mvn test -f pom.xml -B
+
+      - name: Generate test report
+        if: always()
+        uses: dorny/test-reporter@v1
+        with:
+          name: Maven Tests
+          path: '**/target/surefire-reports/*.xml'
+          reporter: java-junit
+
+      - name: Build Docker image - resume-service
+        run: docker build -t resumeforge/resume-service:${{ github.sha }} -f resume-service/Dockerfile .
+
+      - name: Build Docker image - worker-service
+        run: docker build -t resumeforge/worker-service:${{ github.sha }} -f worker-service/Dockerfile .
+
+      - name: Build Docker image - api-gateway
+        run: docker build -t resumeforge/api-gateway:${{ github.sha }} -f api-gateway/Dockerfile .

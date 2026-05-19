@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-service
+  namespace: resumeforge
+  labels:
+    app: worker-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker-service
+  template:
+    metadata:
+      labels:
+        app: worker-service
+    spec:
+      containers:
+        - name: worker-service
+          image: resumeforge/worker-service:latest
+          ports:
+            - containerPort: 8082
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://postgres:5432/resumeforge
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: resumeforge-db-secret
+                  key: username
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: resumeforge-db-secret
+                  key: password
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              value: kafka:9092
+            - name: OLLAMA_API_URL
+              value: http://ollama:11434/v1/chat/completions
+            - name: OLLAMA_MODEL
+              value: llama3.2
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8082
+            initialDelaySeconds: 45
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: worker-service
+  namespace: resumeforge
+spec:
+  type: ClusterIP
+  selector:
+    app: worker-service
+  ports:
+    - port: 8082
+      targetPort: 8082
+      protocol: TCP
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: resumeforge-db-secret
+  namespace: resumeforge
+type: Opaque
+stringData:
+  username: resumeforge
+  password: resumeforge123

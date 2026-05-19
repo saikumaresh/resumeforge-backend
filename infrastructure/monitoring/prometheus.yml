@@ -16,7 +16,7 @@ scrape_configs:
     scrape_interval: 10s
 
   - job_name: 'api-gateway'
-    metrics_path: '/actuator/metrics'
+    metrics_path: '/actuator/prometheus'
     static_configs:
       - targets: ['host.docker.internal:8080']
     scrape_interval: 15s

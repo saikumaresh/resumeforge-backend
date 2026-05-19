@@ -19,6 +19,9 @@ public class OllamaClient {
     @Value("${ollama.model}")
     private String model;
 
+    @Value("${ollama.api-key:}")
+    private String apiKey;
+
     private final RestTemplate restTemplate = new RestTemplate();
 
     public String tailorResume(String masterResumeContent, String jobDescriptionContent) {
@@ -37,6 +40,9 @@ public class OllamaClient {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        if (apiKey != null && !apiKey.isBlank()) {
+            headers.setBearerAuth(apiKey);
+        }
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
         try {

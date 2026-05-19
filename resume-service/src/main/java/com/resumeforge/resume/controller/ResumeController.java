@@ -3,7 +3,6 @@ package com.resumeforge.resume.controller;
 import com.resumeforge.resume.dto.*;
 import com.resumeforge.resume.service.ResumeService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
@@ -11,10 +10,13 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/resumes")
-@RequiredArgsConstructor
 public class ResumeController {
 
     private final ResumeService resumeService;
+
+    public ResumeController(ResumeService resumeService) {
+        this.resumeService = resumeService;
+    }
 
     @PostMapping("/users/{userId}/master")
     public ResponseEntity<MasterResumeResponse> createMasterResume(

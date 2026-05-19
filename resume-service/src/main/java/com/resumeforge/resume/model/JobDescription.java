@@ -1,7 +1,6 @@
 package com.resumeforge.resume.model;
 
 import jakarta.persistence.*;
-import lombok.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,7 +8,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "job_descriptions")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class JobDescription {
 
     @Id
@@ -32,14 +30,30 @@ public class JobDescription {
     private String requiredSkills;
 
     @OneToMany(mappedBy = "jobDescription", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @Builder.Default
     private List<TailoredResume> tailoredResumes = new ArrayList<>();
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    public JobDescription() {}
+
     @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
+    protected void onCreate() { createdAt = LocalDateTime.now(); }
+
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+    public UUID getUserId() { return userId; }
+    public void setUserId(UUID userId) { this.userId = userId; }
+    public String getCompanyName() { return companyName; }
+    public void setCompanyName(String companyName) { this.companyName = companyName; }
+    public String getJobTitle() { return jobTitle; }
+    public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+    public String getRequiredSkills() { return requiredSkills; }
+    public void setRequiredSkills(String requiredSkills) { this.requiredSkills = requiredSkills; }
+    public List<TailoredResume> getTailoredResumes() { return tailoredResumes; }
+    public void setTailoredResumes(List<TailoredResume> tailoredResumes) { this.tailoredResumes = tailoredResumes; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

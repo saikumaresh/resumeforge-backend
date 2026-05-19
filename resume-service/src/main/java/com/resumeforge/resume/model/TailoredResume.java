@@ -1,7 +1,6 @@
 package com.resumeforge.resume.model;
 
 import jakarta.persistence.*;
-import lombok.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,7 +8,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "tailored_resumes")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class TailoredResume {
 
     @Id
@@ -26,7 +24,6 @@ public class TailoredResume {
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    @Builder.Default
     private TailoringStatus status = TailoringStatus.PENDING;
 
     @Version
@@ -40,18 +37,36 @@ public class TailoredResume {
 
     @OneToMany(mappedBy = "tailoredResume", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @OrderBy("position ASC")
-    @Builder.Default
     private List<TailoredResumeSection> sections = new ArrayList<>();
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    public TailoredResume() {}
+
     @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
+    protected void onCreate() { createdAt = LocalDateTime.now(); }
 
     public enum TailoringStatus {
         PENDING, PROCESSING, COMPLETED, FAILED
     }
+
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+    public MasterResume getMasterResume() { return masterResume; }
+    public void setMasterResume(MasterResume masterResume) { this.masterResume = masterResume; }
+    public JobDescription getJobDescription() { return jobDescription; }
+    public void setJobDescription(JobDescription jobDescription) { this.jobDescription = jobDescription; }
+    public TailoringStatus getStatus() { return status; }
+    public void setStatus(TailoringStatus status) { this.status = status; }
+    public Integer getVersion() { return version; }
+    public void setVersion(Integer version) { this.version = version; }
+    public String getPdfPath() { return pdfPath; }
+    public void setPdfPath(String pdfPath) { this.pdfPath = pdfPath; }
+    public ATSScoreResult getAtsScoreResult() { return atsScoreResult; }
+    public void setAtsScoreResult(ATSScoreResult atsScoreResult) { this.atsScoreResult = atsScoreResult; }
+    public List<TailoredResumeSection> getSections() { return sections; }
+    public void setSections(List<TailoredResumeSection> sections) { this.sections = sections; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

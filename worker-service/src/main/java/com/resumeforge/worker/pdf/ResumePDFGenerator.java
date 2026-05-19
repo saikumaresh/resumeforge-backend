@@ -2,7 +2,8 @@ package com.resumeforge.worker.pdf;
 
 import com.lowagie.text.*;
 import com.lowagie.text.pdf.PdfWriter;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import java.io.FileOutputStream;
 import java.nio.file.Files;
@@ -11,9 +12,9 @@ import java.util.Map;
 import java.util.UUID;
 
 @Component
-@Slf4j
 public class ResumePDFGenerator {
 
+    private static final Logger log = LoggerFactory.getLogger(ResumePDFGenerator.class);
     private static final String PDF_OUTPUT_DIR = System.getProperty("user.home") + "/resumeforge-pdfs/";
 
     public String generate(UUID tailoredResumeId, Map<String, String> sections) {
@@ -34,21 +35,11 @@ public class ResumePDFGenerator {
             document.add(name);
             document.add(new Paragraph(" "));
 
-            if (sections.containsKey("summary")) {
-                addSection(document, "PROFESSIONAL SUMMARY", sections.get("summary"), headingFont, bodyFont);
-            }
-            if (sections.containsKey("skills")) {
-                addSection(document, "SKILLS", sections.get("skills"), headingFont, bodyFont);
-            }
-            if (sections.containsKey("experience")) {
-                addSection(document, "EXPERIENCE", sections.get("experience"), headingFont, bodyFont);
-            }
-            if (sections.containsKey("projects")) {
-                addSection(document, "PROJECTS", sections.get("projects"), headingFont, bodyFont);
-            }
-            if (sections.containsKey("education")) {
-                addSection(document, "EDUCATION", sections.get("education"), headingFont, bodyFont);
-            }
+            if (sections.containsKey("summary")) addSection(document, "PROFESSIONAL SUMMARY", sections.get("summary"), headingFont, bodyFont);
+            if (sections.containsKey("skills")) addSection(document, "SKILLS", sections.get("skills"), headingFont, bodyFont);
+            if (sections.containsKey("experience")) addSection(document, "EXPERIENCE", sections.get("experience"), headingFont, bodyFont);
+            if (sections.containsKey("projects")) addSection(document, "PROJECTS", sections.get("projects"), headingFont, bodyFont);
+            if (sections.containsKey("education")) addSection(document, "EDUCATION", sections.get("education"), headingFont, bodyFont);
 
             document.close();
             log.info("PDF generated at {}", filePath);

@@ -1,13 +1,11 @@
 package com.resumeforge.resume.model;
 
 import jakarta.persistence.*;
-import lombok.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
 @Table(name = "ats_score_results")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class ATSScoreResult {
 
     @Id
@@ -36,8 +34,25 @@ public class ATSScoreResult {
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
+    public ATSScoreResult() {}
+
     @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
+    protected void onCreate() { createdAt = LocalDateTime.now(); }
+
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+    public TailoredResume getTailoredResume() { return tailoredResume; }
+    public void setTailoredResume(TailoredResume tailoredResume) { this.tailoredResume = tailoredResume; }
+    public Integer getTotalScore() { return totalScore; }
+    public void setTotalScore(Integer totalScore) { this.totalScore = totalScore; }
+    public Integer getKeywordScore() { return keywordScore; }
+    public void setKeywordScore(Integer keywordScore) { this.keywordScore = keywordScore; }
+    public Integer getSectionScore() { return sectionScore; }
+    public void setSectionScore(Integer sectionScore) { this.sectionScore = sectionScore; }
+    public Integer getActionVerbScore() { return actionVerbScore; }
+    public void setActionVerbScore(Integer actionVerbScore) { this.actionVerbScore = actionVerbScore; }
+    public String getMissingKeywords() { return missingKeywords; }
+    public void setMissingKeywords(String missingKeywords) { this.missingKeywords = missingKeywords; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

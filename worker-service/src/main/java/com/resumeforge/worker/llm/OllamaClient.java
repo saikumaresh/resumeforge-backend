@@ -1,6 +1,7 @@
 package com.resumeforge.worker.llm;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
@@ -8,8 +9,9 @@ import org.springframework.web.client.RestTemplate;
 import java.util.*;
 
 @Component
-@Slf4j
 public class OllamaClient {
+
+    private static final Logger log = LoggerFactory.getLogger(OllamaClient.class);
 
     @Value("${ollama.api-url}")
     private String apiUrl;
@@ -21,7 +23,6 @@ public class OllamaClient {
 
     public String tailorResume(String masterResumeContent, String jobDescriptionContent) {
         log.info("Calling Ollama API for resume tailoring with model={}", model);
-
         String prompt = buildPrompt(masterResumeContent, jobDescriptionContent);
 
         Map<String, Object> requestBody = new HashMap<>();
@@ -36,7 +37,6 @@ public class OllamaClient {
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
-
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
         try {
@@ -46,13 +46,13 @@ public class OllamaClient {
                 log.warn("Null response from Ollama, using fallback");
                 return generateFallbackResume(masterResumeContent);
             }
+            @SuppressWarnings("unchecked")
             List<Map<String, Object>> choices = (List<Map<String, Object>>) responseBody.get("choices");
+            @SuppressWarnings("unchecked")
             Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
             String content = (String) message.get("content");
             log.info("Ollama response received successfully");
-            // Strip markdown code fences if present
-            content = stripCodeFences(content);
-            return content;
+            return stripCodeFences(content);
         } catch (Exception e) {
             log.error("Ollama API call failed: {}. Using fallback.", e.getMessage());
             return generateFallbackResume(masterResumeContent);

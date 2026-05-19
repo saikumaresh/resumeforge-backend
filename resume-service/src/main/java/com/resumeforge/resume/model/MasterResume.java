@@ -1,7 +1,6 @@
 package com.resumeforge.resume.model;
 
 import jakarta.persistence.*;
-import lombok.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -9,7 +8,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "master_resumes")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class MasterResume {
 
     @Id
@@ -30,7 +28,6 @@ public class MasterResume {
 
     @OneToMany(mappedBy = "masterResume", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @OrderBy("position ASC")
-    @Builder.Default
     private List<MasterResumeSection> sections = new ArrayList<>();
 
     @Column(name = "created_at")
@@ -38,6 +35,8 @@ public class MasterResume {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    public MasterResume() {}
 
     @PrePersist
     protected void onCreate() {
@@ -49,4 +48,21 @@ public class MasterResume {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
+
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+    public UUID getUserId() { return userId; }
+    public void setUserId(UUID userId) { this.userId = userId; }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+    public String getSummary() { return summary; }
+    public void setSummary(String summary) { this.summary = summary; }
+    public Integer getVersion() { return version; }
+    public void setVersion(Integer version) { this.version = version; }
+    public List<MasterResumeSection> getSections() { return sections; }
+    public void setSections(List<MasterResumeSection> sections) { this.sections = sections; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 }

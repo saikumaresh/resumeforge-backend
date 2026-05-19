@@ -7,7 +7,8 @@ import com.resumeforge.resume.model.*;
 import com.resumeforge.resume.repository.*;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,8 +16,9 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@Slf4j
 public class ResumeService {
+
+    private static final Logger log = LoggerFactory.getLogger(ResumeService.class);
 
     private final MasterResumeRepository masterResumeRepository;
     private final JobDescriptionRepository jobDescriptionRepository;
@@ -43,20 +45,21 @@ public class ResumeService {
         MDC.put("userId", userId.toString());
         log.info("Creating master resume for user={}", userId);
 
-        MasterResume resume = MasterResume.builder()
-                .userId(userId)
-                .title(request.getTitle())
-                .summary(request.getSummary())
-                .build();
+        MasterResume resume = new MasterResume();
+        resume.setUserId(userId);
+        resume.setTitle(request.getTitle());
+        resume.setSummary(request.getSummary());
 
         if (request.getSections() != null) {
             List<MasterResumeSection> sections = request.getSections().stream()
-                    .map(s -> MasterResumeSection.builder()
-                            .masterResume(resume)
-                            .sectionType(MasterResumeSection.SectionType.valueOf(s.getSectionType()))
-                            .content(s.getContent())
-                            .position(s.getPosition())
-                            .build())
+                    .map(s -> {
+                        MasterResumeSection sec = new MasterResumeSection();
+                        sec.setMasterResume(resume);
+                        sec.setSectionType(MasterResumeSection.SectionType.valueOf(s.getSectionType()));
+                        sec.setContent(s.getContent());
+                        sec.setPosition(s.getPosition());
+                        return sec;
+                    })
                     .collect(Collectors.toList());
             resume.setSections(sections);
         }
@@ -86,20 +89,18 @@ public class ResumeService {
         MasterResume masterResume = masterResumeRepository.findByIdWithSections(masterResumeId)
                 .orElseThrow(() -> new RuntimeException("Master resume not found: " + masterResumeId));
 
-        JobDescription jd = JobDescription.builder()
-                .userId(request.getUserId())
-                .companyName(request.getCompanyName())
-                .jobTitle(request.getJobTitle())
-                .description(request.getJobDescription())
-                .requiredSkills(request.getRequiredSkills())
-                .build();
+        JobDescription jd = new JobDescription();
+        jd.setUserId(request.getUserId());
+        jd.setCompanyName(request.getCompanyName());
+        jd.setJobTitle(request.getJobTitle());
+        jd.setDescription(request.getJobDescription());
+        jd.setRequiredSkills(request.getRequiredSkills());
         JobDescription savedJd = jobDescriptionRepository.save(jd);
 
-        TailoredResume tailoredResume = TailoredResume.builder()
-                .masterResume(masterResume)
-                .jobDescription(savedJd)
-                .status(TailoredResume.TailoringStatus.PENDING)
-                .build();
+        TailoredResume tailoredResume = new TailoredResume();
+        tailoredResume.setMasterResume(masterResume);
+        tailoredResume.setJobDescription(savedJd);
+        tailoredResume.setStatus(TailoredResume.TailoringStatus.PENDING);
         TailoredResume saved = tailoredResumeRepository.save(tailoredResume);
 
         String masterContent = masterResume.getSections().stream()

@@ -1,12 +1,10 @@
 package com.resumeforge.resume.model;
 
 import jakarta.persistence.*;
-import lombok.*;
 import java.util.UUID;
 
 @Entity
 @Table(name = "master_resume_sections")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class MasterResumeSection {
 
     @Id
@@ -27,7 +25,20 @@ public class MasterResumeSection {
     @Column(nullable = false)
     private Integer position;
 
+    public MasterResumeSection() {}
+
     public enum SectionType {
         SUMMARY, EXPERIENCE, EDUCATION, SKILLS, PROJECTS, CERTIFICATIONS, OTHER
     }
+
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+    public MasterResume getMasterResume() { return masterResume; }
+    public void setMasterResume(MasterResume masterResume) { this.masterResume = masterResume; }
+    public SectionType getSectionType() { return sectionType; }
+    public void setSectionType(SectionType sectionType) { this.sectionType = sectionType; }
+    public String getContent() { return content; }
+    public void setContent(String content) { this.content = content; }
+    public Integer getPosition() { return position; }
+    public void setPosition(Integer position) { this.position = position; }
 }

@@ -2,15 +2,17 @@ package com.resumeforge.worker.kafka;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Map;
 import java.util.UUID;
 
 @Service
-@Slf4j
 public class TailoredResumeUpdater {
+
+    private static final Logger log = LoggerFactory.getLogger(TailoredResumeUpdater.class);
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -29,7 +31,6 @@ public class TailoredResumeUpdater {
     public void saveAndComplete(UUID tailoredResumeId, Map<String, String> sections, String pdfPath,
                                  int totalScore, int keywordScore, int sectionScore, int actionVerbScore,
                                  String missingKeywords) {
-        // Save each tailored section
         int position = 0;
         for (Map.Entry<String, String> entry : sections.entrySet()) {
             entityManager.createNativeQuery(
@@ -42,7 +43,6 @@ public class TailoredResumeUpdater {
              .executeUpdate();
         }
 
-        // Save ATS score result
         entityManager.createNativeQuery(
             "INSERT INTO ats_score_results (id, tailored_resume_id, total_score, keyword_score, section_score, action_verb_score, missing_keywords) " +
             "VALUES (gen_random_uuid(), ?, ?, ?, ?, ?, ?)"
@@ -54,7 +54,6 @@ public class TailoredResumeUpdater {
          .setParameter(6, missingKeywords)
          .executeUpdate();
 
-        // Update status + pdf path
         entityManager.createNativeQuery(
             "UPDATE tailored_resumes SET status = 'COMPLETED', pdf_path = ? WHERE id = ?"
         ).setParameter(1, pdfPath)

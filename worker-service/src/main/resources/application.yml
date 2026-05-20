@@ -29,9 +29,9 @@ spring:
         spring.json.value.default.type: java.util.Map
 
 ollama:
-  api-url: https://api.ollama.com/v1/chat/completions
-  model: llama3.2
-  api-key: ${OLLAMA_API_KEY:}
+  api-url: https://ollama.com/v1/chat/completions
+  model: gemma3:12b
+  api-key: ${OLLAMA_API_KEY:99c4d2bf07e84cffbdf9bb1e466b37c6.zVdepzBQ2J5opTVDObgVsCt-}
 
 management:
   endpoints:

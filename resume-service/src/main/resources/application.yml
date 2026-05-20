@@ -40,6 +40,11 @@ management:
       prometheus:
         enabled: true
 
+ollama:
+  api-url: https://ollama.com/v1/chat/completions
+  model: gemma3:12b
+  api-key: ${OLLAMA_API_KEY:99c4d2bf07e84cffbdf9bb1e466b37c6.zVdepzBQ2J5opTVDObgVsCt-}
+
 logging:
   level:
     com.resumeforge: DEBUG

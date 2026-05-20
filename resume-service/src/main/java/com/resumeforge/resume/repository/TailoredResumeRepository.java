@@ -11,7 +11,12 @@ public interface TailoredResumeRepository extends JpaRepository<TailoredResume, 
 
     List<TailoredResume> findByMasterResumeId(UUID masterResumeId);
 
-    // Fix N+1 for listing tailored resumes with sections
     @Query("SELECT r FROM TailoredResume r LEFT JOIN FETCH r.sections WHERE r.masterResume.id = :masterResumeId")
     List<TailoredResume> findByMasterResumeIdWithSections(@Param("masterResumeId") UUID masterResumeId);
+
+    @Query("SELECT r FROM TailoredResume r LEFT JOIN FETCH r.sections WHERE r.masterResume.userId = :userId ORDER BY r.createdAt DESC")
+    List<TailoredResume> findByUserIdWithSections(@Param("userId") UUID userId);
+
+    @Query("SELECT r FROM TailoredResume r LEFT JOIN FETCH r.sections LEFT JOIN FETCH r.atsScoreResult WHERE r.id = :id")
+    java.util.Optional<TailoredResume> findByIdWithSectionsAndScore(@Param("id") UUID id);
 }

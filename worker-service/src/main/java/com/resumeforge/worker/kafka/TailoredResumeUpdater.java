@@ -33,6 +33,7 @@ public class TailoredResumeUpdater {
                                  String missingKeywords) {
         int position = 0;
         for (Map.Entry<String, String> entry : sections.entrySet()) {
+            if (entry.getValue() == null || entry.getValue().isBlank()) continue; // skip empty sections
             entityManager.createNativeQuery(
                 "INSERT INTO tailored_resume_sections (id, tailored_resume_id, section_type, content, position) " +
                 "VALUES (gen_random_uuid(), ?, ?, ?, ?)"

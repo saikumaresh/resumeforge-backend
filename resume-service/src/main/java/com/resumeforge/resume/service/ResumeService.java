@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.LinkedHashMap;
 
 @Service
 public class ResumeService {
@@ -119,10 +120,98 @@ public class ResumeService {
         return toTailoredResumeResponse(saved);
     }
 
+    @Transactional
+    public TailoredResumeResponse retryTailoring(UUID tailoredResumeId) {
+        MDC.put("tailoredResumeId", tailoredResumeId.toString());
+
+        TailoredResume tailoredResume = tailoredResumeRepository.findById(tailoredResumeId)
+                .orElseThrow(() -> new RuntimeException("Tailored resume not found: " + tailoredResumeId));
+
+        if (tailoredResume.getStatus() != TailoredResume.TailoringStatus.FAILED) {
+            throw new IllegalStateException("Can only retry FAILED tailoring jobs (current status: " + tailoredResume.getStatus() + ")");
+        }
+
+        // Reset status to PENDING
+        tailoredResume.setStatus(TailoredResume.TailoringStatus.PENDING);
+        tailoredResumeRepository.save(tailoredResume);
+
+        // Re-build master content
+        MasterResume masterResume = masterResumeRepository.findByIdWithSections(tailoredResume.getMasterResume().getId())
+                .orElseThrow(() -> new RuntimeException("Master resume not found"));
+
+        String masterContent = masterResume.getSections().stream()
+                .map(s -> s.getSectionType() + ":\n" + s.getContent())
+                .collect(Collectors.joining("\n\n"));
+
+        JobDescription jd = tailoredResume.getJobDescription();
+
+        TailoringRequestedEvent event = new TailoringRequestedEvent(
+                tailoredResume.getId(), masterResume.getId(), jd.getId(),
+                jd.getUserId(), masterContent, jd.getDescription()
+        );
+        tailoringProducer.publish(event);
+        tailoringRequestCounter.increment();
+
+        log.info("Tailoring retried tailoredResumeId={}", tailoredResumeId);
+        MDC.clear();
+        return toTailoredResumeResponse(tailoredResume);
+    }
+
     public TailoredResumeResponse getTailoredResume(UUID tailoredResumeId) {
+        TailoredResume resume = tailoredResumeRepository.findByIdWithSectionsAndScore(tailoredResumeId)
+                .orElseGet(() -> tailoredResumeRepository.findById(tailoredResumeId)
+                        .orElseThrow(() -> new RuntimeException("Tailored resume not found: " + tailoredResumeId)));
+        return toTailoredResumeResponse(resume);
+    }
+
+    public List<TailoredResumeResponse> getUserTailoredResumes(UUID userId) {
+        return tailoredResumeRepository.findByUserIdWithSections(userId).stream()
+                .map(this::toTailoredResumeResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public TailoredResumeResponse updateTailoredSections(UUID tailoredResumeId, Map<String, String> newSections) {
         TailoredResume resume = tailoredResumeRepository.findById(tailoredResumeId)
                 .orElseThrow(() -> new RuntimeException("Tailored resume not found: " + tailoredResumeId));
-        return toTailoredResumeResponse(resume);
+
+        // Update existing sections content
+        resume.getSections().forEach(section -> {
+            String key = section.getSectionType().name().toLowerCase();
+            if (newSections.containsKey(key)) {
+                section.setContent(newSections.get(key));
+            }
+        });
+
+        TailoredResume saved = tailoredResumeRepository.save(resume);
+        return toTailoredResumeResponse(saved);
+    }
+
+    @Transactional
+    public MasterResumeResponse upsertMasterResume(UUID userId, String content) {
+        List<MasterResume> existing = masterResumeRepository.findByUserId(userId);
+        MasterResume resume;
+        if (!existing.isEmpty()) {
+            resume = masterResumeRepository.findByIdWithSections(existing.get(0).getId())
+                    .orElse(existing.get(0));
+        } else {
+            resume = new MasterResume();
+            resume.setUserId(userId);
+            resume.setTitle("My Resume");
+        }
+
+        // Replace sections with single OTHER section holding full content
+        resume.getSections().clear();
+        MasterResumeSection section = new MasterResumeSection();
+        section.setMasterResume(resume);
+        section.setSectionType(MasterResumeSection.SectionType.OTHER);
+        section.setContent(content);
+        section.setPosition(1);
+        resume.getSections().add(section);
+        resume.setSummary(content.substring(0, Math.min(500, content.length())));
+
+        MasterResume saved = masterResumeRepository.save(resume);
+        return toMasterResumeResponse(saved);
     }
 
     private MasterResumeResponse toMasterResumeResponse(MasterResume r) {
@@ -153,10 +242,31 @@ public class ResumeService {
         resp.setJobDescriptionId(r.getJobDescription().getId());
         resp.setStatus(r.getStatus().name());
         resp.setPdfDownloadUrl(r.getPdfPath() != null ? "/api/v1/exports/" + r.getId() + "/pdf" : null);
+        resp.setCreatedAt(r.getCreatedAt());
+
+        // Job details
+        if (r.getJobDescription() != null) {
+            resp.setCompanyName(r.getJobDescription().getCompanyName());
+            resp.setJobTitle(r.getJobDescription().getJobTitle());
+        }
+
+        // ATS score breakdown
         if (r.getAtsScoreResult() != null) {
             resp.setAtsScore(r.getAtsScoreResult().getTotalScore());
+            resp.setKeywordScore(r.getAtsScoreResult().getKeywordScore());
+            resp.setSectionScore(r.getAtsScoreResult().getSectionScore());
+            resp.setActionVerbScore(r.getAtsScoreResult().getActionVerbScore());
+            resp.setMissingKeywords(r.getAtsScoreResult().getMissingKeywords());
         }
-        resp.setCreatedAt(r.getCreatedAt());
+
+        // Tailored sections as Map<sectionName, content>
+        if (r.getSections() != null && !r.getSections().isEmpty()) {
+            Map<String, String> sections = new LinkedHashMap<>();
+            r.getSections().forEach(s ->
+                sections.put(s.getSectionType().name().toLowerCase(), s.getContent()));
+            resp.setTailoredSections(sections);
+        }
+
         return resp;
     }
 }

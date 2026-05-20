@@ -5,7 +5,7 @@ spring:
   application:
     name: worker-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/resumeforge
+    url: jdbc:postgresql://localhost:5432/resumeforge?TimeZone=Asia/Kolkata
     username: resumeforge
     password: resumeforge123
     driver-class-name: org.postgresql.Driver
@@ -29,8 +29,9 @@ spring:
         spring.json.value.default.type: java.util.Map
 
 ollama:
-  api-url: http://localhost:11434/v1/chat/completions
+  api-url: https://api.ollama.com/v1/chat/completions
   model: llama3.2
+  api-key: ${OLLAMA_API_KEY:}
 
 management:
   endpoints:

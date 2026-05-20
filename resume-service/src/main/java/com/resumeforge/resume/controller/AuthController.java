@@ -5,10 +5,12 @@ import com.resumeforge.resume.dto.LoginRequest;
 import com.resumeforge.resume.dto.RegisterRequest;
 import com.resumeforge.resume.service.AuthService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -32,6 +34,19 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
+    }
+
+    /**
+     * Sign in with Google — expects { "idToken": "<google-credential>" }
+     * The idToken is the credential from @react-oauth/google's CredentialResponse.
+     */
+    @PostMapping("/google")
+    public ResponseEntity<AuthResponse> googleSignIn(@RequestBody Map<String, String> body) {
+        String idToken = body.get("idToken");
+        if (idToken == null || idToken.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(authService.googleSignIn(idToken));
     }
 
     /** Return current user info (and a fresh token) — requires valid JWT */

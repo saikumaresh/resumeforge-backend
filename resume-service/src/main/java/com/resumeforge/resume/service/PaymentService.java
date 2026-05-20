@@ -4,6 +4,8 @@ import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
 import com.razorpay.RazorpayException;
 import com.razorpay.Utils;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import com.resumeforge.resume.model.Subscription;
 import com.resumeforge.resume.model.User;
 import com.resumeforge.resume.repository.SubscriptionRepository;
@@ -141,6 +143,72 @@ public class PaymentService {
 
         log.info("[PAYMENT] Payment verified, upgraded userId={} to PRO", userId);
         return Map.of("status", "success", "plan", "PRO");
+    }
+
+    /**
+     * Handle Razorpay webhook.
+     * Verifies X-Razorpay-Signature header (HMAC-SHA256 of raw body with webhook secret).
+     * Idempotent: safe to call multiple times with the same payload.
+     */
+    @Transactional
+    public void handleWebhook(String rawBody, String razorpaySignature) {
+        validateRazorpayConfig();
+
+        // Verify webhook signature: HMAC-SHA256(rawBody, webhookSecret)
+        // Razorpay webhook secret is separate from the API secret; default to keySecret for dev
+        String webhookSecret = razorpayKeySecret; // replace with ${razorpay.webhook-secret} in prod
+
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(webhookSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] hmac = mac.doFinal(rawBody.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hmac) sb.append(String.format("%02x", b));
+            String computed = sb.toString();
+
+            if (!computed.equals(razorpaySignature)) {
+                log.warn("[WEBHOOK] Invalid Razorpay signature. Rejecting.");
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid webhook signature.");
+            }
+        } catch (ResponseStatusException rse) {
+            throw rse;
+        } catch (Exception e) {
+            log.error("[WEBHOOK] Signature verification error: {}", e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Webhook signature error.");
+        }
+
+        // Parse event
+        try {
+            org.json.JSONObject event = new org.json.JSONObject(rawBody);
+            String eventType = event.optString("event", "");
+            log.info("[WEBHOOK] Received event type={}", eventType);
+
+            if ("payment.captured".equals(eventType)) {
+                org.json.JSONObject paymentEntity = event
+                        .getJSONObject("payload")
+                        .getJSONObject("payment")
+                        .getJSONObject("entity");
+
+                String orderId   = paymentEntity.optString("order_id");
+                String paymentId = paymentEntity.optString("id");
+
+                subscriptionRepo.findByRazorpayOrderId(orderId).ifPresent(sub -> {
+                    if (!"PAID".equals(sub.getStatus())) {
+                        sub.setRazorpayPaymentId(paymentId);
+                        sub.setStatus("PAID");
+                        subscriptionRepo.save(sub);
+                        userRepo.findById(sub.getUserId()).ifPresent(u -> {
+                            u.setPlan("PRO");
+                            userRepo.save(u);
+                            log.info("[WEBHOOK] Upgraded userId={} to PRO via webhook", u.getId());
+                        });
+                    }
+                });
+            }
+        } catch (Exception e) {
+            log.error("[WEBHOOK] Event parsing error: {}", e.getMessage());
+            // Don't rethrow — return 200 so Razorpay doesn't retry
+        }
     }
 
     private void validateRazorpayConfig() {

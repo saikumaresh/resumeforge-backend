@@ -4,12 +4,17 @@ import com.resumeforge.resume.model.TailoredResume;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
 public interface TailoredResumeRepository extends JpaRepository<TailoredResume, UUID> {
 
     List<TailoredResume> findByMasterResumeId(UUID masterResumeId);
+
+    /** Count tailored resumes created by a user since a given timestamp (for quota checks). */
+    @Query("SELECT COUNT(r) FROM TailoredResume r WHERE r.masterResume.userId = :userId AND r.createdAt >= :since")
+    long countByUserIdSince(@Param("userId") UUID userId, @Param("since") Instant since);
 
     @Query("SELECT r FROM TailoredResume r LEFT JOIN FETCH r.sections WHERE r.masterResume.id = :masterResumeId")
     List<TailoredResume> findByMasterResumeIdWithSections(@Param("masterResumeId") UUID masterResumeId);

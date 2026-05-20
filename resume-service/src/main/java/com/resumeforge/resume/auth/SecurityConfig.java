@@ -23,12 +23,14 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
+    private final RateLimitFilter rateLimitFilter;
 
     @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:3001}")
     private String allowedOriginsRaw;
 
-    public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
-        this.jwtAuthFilter = jwtAuthFilter;
+    public SecurityConfig(JwtAuthFilter jwtAuthFilter, RateLimitFilter rateLimitFilter) {
+        this.jwtAuthFilter   = jwtAuthFilter;
+        this.rateLimitFilter = rateLimitFilter;
     }
 
     @Bean
@@ -40,6 +42,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints — no JWT needed
                 .requestMatchers("/api/v1/auth/**").permitAll()
+                .requestMatchers("/api/v1/payments/webhook").permitAll()  // signature-verified server-to-server
                 .requestMatchers("/actuator/**").permitAll()
                 // All others require a valid JWT
                 .anyRequest().authenticated()
@@ -56,7 +59,8 @@ public class SecurityConfig {
                     res.getWriter().write("{\"error\":\"Access denied\"}");
                 })
             )
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(rateLimitFilter, JwtAuthFilter.class);
 
         return http.build();
     }

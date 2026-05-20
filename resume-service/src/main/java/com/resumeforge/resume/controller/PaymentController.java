@@ -1,6 +1,7 @@
 package com.resumeforge.resume.controller;
 
 import com.resumeforge.resume.service.PaymentService;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -40,5 +41,18 @@ public class PaymentController {
             @AuthenticationPrincipal UUID userId,
             @RequestBody Map<String, String> body) {
         return ResponseEntity.ok(paymentService.verifyPayment(userId, body));
+    }
+
+    /**
+     * POST /api/v1/payments/webhook
+     * Razorpay server-to-server webhook (no JWT required, but signature-verified).
+     * Register this URL in Razorpay Dashboard → Webhooks.
+     */
+    @PostMapping(value = "/webhook", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Void> webhook(
+            @RequestBody String rawBody,
+            @RequestHeader(value = "X-Razorpay-Signature", required = false) String signature) {
+        paymentService.handleWebhook(rawBody, signature != null ? signature : "");
+        return ResponseEntity.ok().build();
     }
 }

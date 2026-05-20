@@ -10,8 +10,12 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.LinkedHashMap;
@@ -21,20 +25,25 @@ public class ResumeService {
 
     private static final Logger log = LoggerFactory.getLogger(ResumeService.class);
 
+    private static final int FREE_PLAN_MONTHLY_LIMIT = 5;
+
     private final MasterResumeRepository masterResumeRepository;
     private final JobDescriptionRepository jobDescriptionRepository;
     private final TailoredResumeRepository tailoredResumeRepository;
+    private final UserRepository userRepository;
     private final TailoringProducer tailoringProducer;
     private final Counter tailoringRequestCounter;
 
     public ResumeService(MasterResumeRepository masterResumeRepository,
                          JobDescriptionRepository jobDescriptionRepository,
                          TailoredResumeRepository tailoredResumeRepository,
+                         UserRepository userRepository,
                          TailoringProducer tailoringProducer,
                          MeterRegistry meterRegistry) {
         this.masterResumeRepository = masterResumeRepository;
         this.jobDescriptionRepository = jobDescriptionRepository;
         this.tailoredResumeRepository = tailoredResumeRepository;
+        this.userRepository = userRepository;
         this.tailoringProducer = tailoringProducer;
         this.tailoringRequestCounter = Counter.builder("resumeforge.tailoring.requests")
                 .description("Total number of resume tailoring requests")
@@ -89,6 +98,22 @@ public class ResumeService {
 
         MasterResume masterResume = masterResumeRepository.findByIdWithSections(masterResumeId)
                 .orElseThrow(() -> new RuntimeException("Master resume not found: " + masterResumeId));
+
+        // ── Plan quota check ──────────────────────────────────────────────────
+        UUID userId = masterResume.getUserId();
+        userRepository.findById(userId).ifPresent(user -> {
+            if ("FREE".equals(user.getPlan())) {
+                Instant monthStart = Instant.now().truncatedTo(ChronoUnit.DAYS)
+                        .minus(Instant.now().atZone(java.time.ZoneOffset.UTC).getDayOfMonth() - 1, ChronoUnit.DAYS);
+                long monthlyCount = tailoredResumeRepository.countByUserIdSince(userId, monthStart);
+                if (monthlyCount >= FREE_PLAN_MONTHLY_LIMIT) {
+                    log.warn("[QUOTA] FREE plan limit reached for userId={} count={}", userId, monthlyCount);
+                    throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED,
+                            "Free plan limit reached (" + FREE_PLAN_MONTHLY_LIMIT + " applications/month). " +
+                            "Upgrade to PRO for unlimited tailoring.");
+                }
+            }
+        });
 
         JobDescription jd = new JobDescription();
         jd.setUserId(request.getUserId());

@@ -80,8 +80,16 @@ public class AuthService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
                         "Invalid email or password."));
 
-        if (user.getPasswordHash() == null ||
-                !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+        // Detect Google-SSO-only accounts
+        if (user.getPasswordHash() == null) {
+            if (user.getGoogleId() != null) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "This account uses Google sign-in. Please click \"Continue with Google\" to log in.");
+            }
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password.");
+        }
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
                     "Invalid email or password.");
         }

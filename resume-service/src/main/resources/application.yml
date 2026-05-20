@@ -40,6 +40,10 @@ management:
       prometheus:
         enabled: true
 
+auth:
+  jwt:
+    secret: ${JWT_SECRET:resumeforge-jwt-secret-key-must-be-at-least-32-characters-long}
+
 ollama:
   api-url: https://ollama.com/v1/chat/completions
   model: gemma3:12b

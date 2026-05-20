@@ -1,5 +1,6 @@
 package com.resumeforge.worker.llm;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -7,6 +8,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import java.util.*;
+import java.util.LinkedHashMap;
 
 @Component
 public class OllamaClient {
@@ -23,6 +25,7 @@ public class OllamaClient {
     private String apiKey;
 
     private final RestTemplate restTemplate = new RestTemplate();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public String tailorResume(String masterResumeContent, String jobDescriptionContent) {
         log.info("Calling Ollama API for resume tailoring with model={}", model);
@@ -97,17 +100,20 @@ public class OllamaClient {
     }
 
     private String generateFallbackResume(String masterContent) {
-        String truncated = masterContent != null
-            ? masterContent.replace("\"", "'").substring(0, Math.min(200, masterContent.length()))
-            : "Experienced professional";
-        return """
-            {
-              "summary": "Experienced professional seeking this role with strong relevant background.",
-              "experience": "%s",
-              "skills": "Java, Spring Boot, Kafka, Docker, PostgreSQL",
-              "education": "Available on request",
-              "projects": "See full portfolio on GitHub"
-            }
-            """.formatted(truncated);
+        try {
+            String experience = masterContent != null
+                    ? masterContent.substring(0, Math.min(200, masterContent.length()))
+                    : "Experienced professional";
+            Map<String, String> sections = new LinkedHashMap<>();
+            sections.put("summary", "Experienced professional seeking this role with strong relevant background.");
+            sections.put("experience", experience);
+            sections.put("skills", "Java, Spring Boot, Kafka, Docker, PostgreSQL");
+            sections.put("education", "Available on request");
+            sections.put("projects", "See full portfolio on GitHub");
+            return objectMapper.writeValueAsString(sections);
+        } catch (Exception e) {
+            log.warn("Fallback JSON generation failed: {}", e.getMessage());
+            return "{\"summary\":\"Experienced professional\",\"experience\":\"N/A\",\"skills\":\"Java\",\"education\":\"N/A\",\"projects\":\"N/A\"}";
+        }
     }
 }

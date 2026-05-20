@@ -5,7 +5,7 @@ spring:
   application:
     name: worker-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/resumeforge
+    url: jdbc:postgresql://localhost:5432/resumeforge?TimeZone=Asia/Kolkata
     username: resumeforge
     password: resumeforge123
     driver-class-name: org.postgresql.Driver

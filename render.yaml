@@ -21,10 +21,7 @@ services:
           name: resumeforge-db
           property: password
       - key: REDIS_URL
-        fromService:
-          name: resumeforge-redis
-          type: redis
-          property: connectionString
+        sync: false       # set manually: Upstash Redis connection string (rediss://...)
       - key: KAFKA_BOOTSTRAP_SERVERS
         sync: false       # set manually from Upstash dashboard
       - key: KAFKA_SECURITY_PROTOCOL
@@ -85,5 +82,4 @@ databases:
   - name: resumeforge-db
     plan: free           # 1 GB storage, 97-day retention
 
-# Redis managed by Render
-# Add manually in the Render dashboard: New → Redis → name "resumeforge-redis"
+# Redis: Using Upstash (external). Set REDIS_URL manually in Render env vars.

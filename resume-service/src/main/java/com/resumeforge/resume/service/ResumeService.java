@@ -247,6 +247,7 @@ public class ResumeService {
         resp.setSummary(r.getSummary());
         resp.setVersion(r.getVersion());
         resp.setCreatedAt(r.getCreatedAt());
+        resp.setUpdatedAt(r.getUpdatedAt());
         if (r.getSections() != null) {
             resp.setSections(r.getSections().stream().map(s -> {
                 MasterResumeResponse.SectionResponse sr = new MasterResumeResponse.SectionResponse();

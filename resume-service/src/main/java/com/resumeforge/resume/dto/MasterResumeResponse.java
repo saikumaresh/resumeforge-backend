@@ -12,6 +12,7 @@ public class MasterResumeResponse {
     private String summary;
     private Integer version;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
     private List<SectionResponse> sections;
 
     public UUID getId() { return id; }
@@ -26,6 +27,8 @@ public class MasterResumeResponse {
     public void setVersion(Integer version) { this.version = version; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
     public List<SectionResponse> getSections() { return sections; }
     public void setSections(List<SectionResponse> sections) { this.sections = sections; }
 

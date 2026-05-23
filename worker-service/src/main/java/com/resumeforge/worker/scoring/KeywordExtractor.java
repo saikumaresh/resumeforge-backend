@@ -38,7 +38,7 @@ public class KeywordExtractor {
             "able", "ability", "skills", "skill", "knowledge", "experience",
             "years", "year", "month", "months", "time", "times",
             "team", "teams", "member", "members", "cross", "functional",
-            "senior", "junior", "lead", "staff", "principal",
+            "senior", "junior", "staff", "principal",
             "software", "engineer", "engineering", "developer", "development",
             "technology", "technologies", "solution", "solutions",
             "system", "systems", "platform", "platforms",
@@ -49,14 +49,14 @@ public class KeywordExtractor {
             "role", "roles", "position", "positions",
             "fast", "agile", "dynamic", "innovative", "strategic",
             "including", "included", "includes",
-            "following", "following", "such", "each", "both",
+            "following", "such", "each", "both",
             "within", "without", "around", "along",
             "also", "other", "another", "same", "different",
             "more", "most", "less", "least", "many", "much",
             "this", "that", "these", "those", "which", "what",
             "when", "where", "while", "their", "there", "here",
             "them", "they", "your", "you", "our", "we", "its",
-            "has", "been", "with", "all", "any", "some"
+            "all", "any", "some"
     );
 
     private static final Set<String> TECH_KEYWORDS = Set.of(

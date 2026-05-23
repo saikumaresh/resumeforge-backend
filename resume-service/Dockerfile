@@ -3,7 +3,7 @@ FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
 # Copy parent POM first for layer caching
-COPY pom.xml /app/parent-pom.xml
+COPY pom.xml /app/pom.xml
 COPY resume-service/pom.xml /app/resume-service/pom.xml
 
 WORKDIR /app/resume-service

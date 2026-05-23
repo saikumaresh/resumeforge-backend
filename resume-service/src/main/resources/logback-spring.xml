@@ -11,18 +11,10 @@
         </encoder>
     </appender>
 
-    <appender name="FILE_JSON" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>logs/resume-service.log</file>
-        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>logs/resume-service.%d{yyyy-MM-dd}.log</fileNamePattern>
-            <maxHistory>7</maxHistory>
-        </rollingPolicy>
-        <encoder class="net.logstash.logback.encoder.LogstashEncoder"/>
-    </appender>
+    <!-- FILE appender removed: containers log to stdout; Render captures stdout/stderr -->
 
     <root level="INFO">
         <appender-ref ref="CONSOLE_JSON"/>
-        <appender-ref ref="FILE_JSON"/>
     </root>
 
     <logger name="com.resumeforge" level="DEBUG"/>

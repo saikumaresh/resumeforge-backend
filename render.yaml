@@ -46,12 +46,15 @@ services:
         value: WARN
 
   # ── Worker service ────────────────────────────────────────────────────────────
-  - type: worker
+  # Note: Render free tier does not support type:worker; using type:web instead.
+  # The Spring Boot actuator provides a health endpoint; Kafka consumption still works.
+  - type: web
     name: resumeforge-worker
     runtime: docker
     dockerfilePath: ./worker-service/Dockerfile
     dockerContext: .
     plan: free
+    healthCheckPath: /actuator/health
     envVars:
       - key: DATABASE_URL
         fromDatabase:

@@ -44,7 +44,7 @@ public class KeywordExtractor {
             "system", "systems", "platform", "platforms",
             "product", "products", "project", "projects",
             "process", "processes", "business", "company",
-            "using", "used", "various", "multiple", "across",
+            "using", "various", "multiple", "across",
             "well", "high", "large", "new", "based", "related",
             "role", "roles", "position", "positions",
             "fast", "agile", "dynamic", "innovative", "strategic",

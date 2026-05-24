@@ -6,7 +6,7 @@ spring:
     name: worker-service
 
   datasource:
-    url: jdbc:${DATABASE_URL:postgresql://localhost:5432/resumeforge?TimeZone=Asia/Kolkata}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:resumeforge}
     username: ${DATABASE_USERNAME:resumeforge}
     password: ${DATABASE_PASSWORD:resumeforge123}
     driver-class-name: org.postgresql.Driver

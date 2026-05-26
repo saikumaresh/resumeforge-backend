@@ -44,6 +44,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 .requestMatchers("/api/v1/payments/webhook").permitAll()  // signature-verified server-to-server
                 .requestMatchers("/actuator/**").permitAll()
+                .requestMatchers("/error").permitAll()   // expose Spring Boot error endpoint
                 // All others require a valid JWT
                 .anyRequest().authenticated()
             )

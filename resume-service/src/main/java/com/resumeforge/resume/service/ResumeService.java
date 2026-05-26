@@ -14,8 +14,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.LinkedHashMap;
@@ -103,8 +103,8 @@ public class ResumeService {
         UUID userId = masterResume.getUserId();
         userRepository.findById(userId).ifPresent(user -> {
             if ("FREE".equals(user.getPlan())) {
-                Instant monthStart = Instant.now().truncatedTo(ChronoUnit.DAYS)
-                        .minus(Instant.now().atZone(java.time.ZoneOffset.UTC).getDayOfMonth() - 1, ChronoUnit.DAYS);
+                LocalDateTime monthStart = LocalDateTime.now(ZoneOffset.UTC)
+                        .withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
                 long monthlyCount = tailoredResumeRepository.countByUserIdSince(userId, monthStart);
                 if (monthlyCount >= FREE_PLAN_MONTHLY_LIMIT) {
                     log.warn("[QUOTA] FREE plan limit reached for userId={} count={}", userId, monthlyCount);

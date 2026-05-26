@@ -137,8 +137,11 @@ public class ResumeService {
                 saved.getId(), masterResumeId, savedJd.getId(),
                 request.getUserId(), masterContent, request.getJobDescription()
         );
-        tailoringProducer.publish(event);
+        boolean kafkaOk = tailoringProducer.publish(event);
         tailoringRequestCounter.increment();
+        if (!kafkaOk) {
+            log.warn("Kafka publish failed for tailoredResumeId={} — job saved as PENDING for manual retry", saved.getId());
+        }
 
         log.info("Tailoring triggered tailoredResumeId={} jobTitle={}", saved.getId(), request.getJobTitle());
         MDC.clear();
@@ -174,8 +177,11 @@ public class ResumeService {
                 tailoredResume.getId(), masterResume.getId(), jd.getId(),
                 jd.getUserId(), masterContent, jd.getDescription()
         );
-        tailoringProducer.publish(event);
+        boolean kafkaOk = tailoringProducer.publish(event);
         tailoringRequestCounter.increment();
+        if (!kafkaOk) {
+            log.warn("Kafka publish failed on retry for tailoredResumeId={}", tailoredResumeId);
+        }
 
         log.info("Tailoring retried tailoredResumeId={}", tailoredResumeId);
         MDC.clear();

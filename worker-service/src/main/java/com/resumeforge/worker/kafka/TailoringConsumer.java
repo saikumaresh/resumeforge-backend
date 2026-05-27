@@ -3,7 +3,6 @@ package com.resumeforge.worker.kafka;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.resumeforge.worker.guardrails.TailoringGuardrailValidator;
 import com.resumeforge.worker.llm.OllamaClient;
-import com.resumeforge.worker.pdf.ResumePDFGenerator;
 import com.resumeforge.worker.scoring.ATSScorer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,20 +21,17 @@ public class TailoringConsumer {
     private static final Logger log = LoggerFactory.getLogger(TailoringConsumer.class);
 
     private final OllamaClient ollamaClient;
-    private final ResumePDFGenerator pdfGenerator;
     private final TailoredResumeUpdater resumeUpdater;
     private final ATSScorer atsScorer;
     private final ObjectMapper objectMapper;
     private final TailoringGuardrailValidator guardrailValidator;
 
     public TailoringConsumer(OllamaClient ollamaClient,
-                              ResumePDFGenerator pdfGenerator,
                               TailoredResumeUpdater resumeUpdater,
                               ATSScorer atsScorer,
                               ObjectMapper objectMapper,
                               TailoringGuardrailValidator guardrailValidator) {
         this.ollamaClient       = ollamaClient;
-        this.pdfGenerator       = pdfGenerator;
         this.resumeUpdater      = resumeUpdater;
         this.atsScorer          = atsScorer;
         this.objectMapper       = objectMapper;
@@ -234,8 +230,10 @@ public class TailoringConsumer {
             // Use the sanitized (validated) sections from here on
             Map<String, String> sections = validation.sanitizedSections();
 
-            // ── 5. Generate PDF ──────────────────────────────────────────────
-            String pdfPath = pdfGenerator.generate(tailoredResumeId, sections);
+            // ── 5. PDF generation skipped (no persistent storage configured) ─
+            //    pdfPath remains null; pdfDownloadUrl will be absent from responses.
+            //    To enable: add cloud storage (e.g. R2) and wire ResumePDFGenerator.
+            String pdfPath = null;
 
             // ── 6. ATS scoring ───────────────────────────────────────────────
             String tailoredContent = String.join("\n", sections.values());

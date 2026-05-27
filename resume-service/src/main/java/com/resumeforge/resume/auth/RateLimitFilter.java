@@ -24,10 +24,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * Stored in memory — resets on restart. Suitable for single-node;
  * for multi-node production, replace backing store with Redis.
  *
- * Default limits (configurable via RuleConfig):
+ * Default limits:
  *   /api/v1/auth/login    → 10 requests / 60 s
- *   /api/v1/auth/register → 5 requests / 60 s
- *   /api/v1/auth/google   → 10 requests / 60 s
+ *   /api/v1/auth/register →  5 requests / 60 s
+ *
+ * IP resolution: prefers X-Real-IP (set by Render/Nginx load balancer and
+ * not user-controllable), then falls back to RemoteAddr. Does NOT blindly
+ * trust the leftmost X-Forwarded-For value, which can be spoofed by clients.
  */
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
@@ -38,8 +41,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final List<RuleConfig> RULES = List.of(
         new RuleConfig("/api/v1/auth/login",    10,  60_000),
-        new RuleConfig("/api/v1/auth/register",  5,  60_000),
-        new RuleConfig("/api/v1/auth/google",   10,  60_000)
+        new RuleConfig("/api/v1/auth/register",  5,  60_000)
     );
 
     // Map<ruleKey+ip, Deque<requestTimestampMs>>
@@ -91,11 +93,20 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
     }
 
-    /** Handles X-Forwarded-For from reverse proxies/CDN. */
+    /**
+     * Resolves the real client IP in a spoofing-resistant way.
+     *
+     * Priority:
+     * 1. X-Real-IP — single-value header set by Render/Nginx; cannot be set by clients.
+     * 2. RemoteAddr — TCP-level source address (Render's edge node in production).
+     *
+     * X-Forwarded-For is intentionally NOT used for rate-limit keying because its
+     * leftmost value is attacker-controlled and can be used to bypass limits.
+     */
     private String resolveClientIp(HttpServletRequest req) {
-        String xff = req.getHeader("X-Forwarded-For");
-        if (xff != null && !xff.isBlank()) {
-            return xff.split(",")[0].trim();
+        String realIp = req.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) {
+            return realIp.trim();
         }
         return req.getRemoteAddr();
     }

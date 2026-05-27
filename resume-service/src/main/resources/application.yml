@@ -63,6 +63,7 @@ auth:
 razorpay:
   key-id: ${RAZORPAY_KEY_ID:rzp_test_placeholder}
   key-secret: ${RAZORPAY_KEY_SECRET:placeholder_secret}
+  webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
 
 ollama:
   api-url: ${OLLAMA_API_URL:https://ollama.com/v1/chat/completions}

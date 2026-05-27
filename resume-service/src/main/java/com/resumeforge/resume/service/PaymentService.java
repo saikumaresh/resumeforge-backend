@@ -40,6 +40,9 @@ public class PaymentService {
     @Value("${razorpay.key-secret}")
     private String razorpayKeySecret;
 
+    @Value("${razorpay.webhook-secret:}")
+    private String razorpayWebhookSecret;
+
     public PaymentService(SubscriptionRepository subscriptionRepo, UserRepository userRepo) {
         this.subscriptionRepo = subscriptionRepo;
         this.userRepo         = userRepo;
@@ -155,8 +158,12 @@ public class PaymentService {
         validateRazorpayConfig();
 
         // Verify webhook signature: HMAC-SHA256(rawBody, webhookSecret)
-        // Razorpay webhook secret is separate from the API secret; default to keySecret for dev
-        String webhookSecret = razorpayKeySecret; // replace with ${razorpay.webhook-secret} in prod
+        // Razorpay webhook secret is configured separately in the Razorpay dashboard
+        if (razorpayWebhookSecret == null || razorpayWebhookSecret.isBlank()) {
+            log.error("[WEBHOOK] RAZORPAY_WEBHOOK_SECRET not configured — rejecting all webhook calls");
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Webhook not configured.");
+        }
+        String webhookSecret = razorpayWebhookSecret;
 
         try {
             Mac mac = Mac.getInstance("HmacSHA256");

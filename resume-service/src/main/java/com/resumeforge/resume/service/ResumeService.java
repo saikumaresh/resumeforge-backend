@@ -15,8 +15,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.LinkedHashMap;
@@ -26,25 +24,20 @@ public class ResumeService {
 
     private static final Logger log = LoggerFactory.getLogger(ResumeService.class);
 
-    private static final int FREE_PLAN_MONTHLY_LIMIT = 5;
-
     private final MasterResumeRepository masterResumeRepository;
     private final JobDescriptionRepository jobDescriptionRepository;
     private final TailoredResumeRepository tailoredResumeRepository;
-    private final UserRepository userRepository;
     private final TailoringProducer tailoringProducer;
     private final Counter tailoringRequestCounter;
 
     public ResumeService(MasterResumeRepository masterResumeRepository,
                          JobDescriptionRepository jobDescriptionRepository,
                          TailoredResumeRepository tailoredResumeRepository,
-                         UserRepository userRepository,
                          TailoringProducer tailoringProducer,
                          MeterRegistry meterRegistry) {
         this.masterResumeRepository = masterResumeRepository;
         this.jobDescriptionRepository = jobDescriptionRepository;
         this.tailoredResumeRepository = tailoredResumeRepository;
-        this.userRepository = userRepository;
         this.tailoringProducer = tailoringProducer;
         this.tailoringRequestCounter = Counter.builder("resumeforge.tailoring.requests")
                 .description("Total number of resume tailoring requests")
@@ -122,20 +115,6 @@ public class ResumeService {
         // ── BOLA ownership check ──────────────────────────────────────────────
         UUID userId = masterResume.getUserId();
         assertOwnership(userId);
-
-        // ── Plan quota check ──────────────────────────────────────────────────
-        User user = userRepository.findById(userId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User account not found"));
-        if ("FREE".equals(user.getPlan())) {
-            LocalDateTime monthStart = LocalDateTime.now(ZoneOffset.UTC)
-                    .withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
-            long monthlyCount = tailoredResumeRepository.countByUserIdSince(userId, monthStart);
-            if (monthlyCount >= FREE_PLAN_MONTHLY_LIMIT) {
-                log.warn("[QUOTA] FREE plan limit reached for userId={} count={}", userId, monthlyCount);
-                throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED,
-                        "Free plan limit reached (" + FREE_PLAN_MONTHLY_LIMIT + " applications/month). Upgrade to PRO for unlimited tailoring.");
-            }
-        }
 
         JobDescription jd = new JobDescription();
         jd.setUserId(userId);

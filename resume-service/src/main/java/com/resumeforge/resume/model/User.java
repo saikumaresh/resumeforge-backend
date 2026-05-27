@@ -24,12 +24,6 @@ public class User {
     @Column(name = "email_verified", nullable = false)
     private boolean emailVerified = false;
 
-    @Column(name = "google_id")
-    private String googleId;
-
-    @Column(name = "picture_url")
-    private String pictureUrl;
-
     @Column(name = "plan", nullable = false)
     private String plan = "FREE";
 
@@ -59,12 +53,6 @@ public class User {
     public void setEmailVerified(boolean ev)      { this.emailVerified = ev; }
 
     public Instant getCreatedAt()                 { return createdAt; }
-
-    public String getGoogleId()                   { return googleId; }
-    public void setGoogleId(String googleId)      { this.googleId = googleId; }
-
-    public String getPictureUrl()                 { return pictureUrl; }
-    public void setPictureUrl(String pictureUrl)  { this.pictureUrl = pictureUrl; }
 
     public String getPlan()                       { return plan; }
     public void setPlan(String plan)              { this.plan = plan; }

@@ -42,7 +42,6 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints — no JWT needed
                 .requestMatchers("/api/v1/auth/**").permitAll()
-                .requestMatchers("/api/v1/payments/webhook").permitAll()  // signature-verified server-to-server
                 .requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
                 .requestMatchers("/error").permitAll()   // expose Spring Boot error endpoint
                 // All others require a valid JWT

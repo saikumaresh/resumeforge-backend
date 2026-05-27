@@ -64,12 +64,7 @@ public class AuthService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED,
                         "Invalid email or password."));
 
-        // Detect Google-SSO-only accounts
         if (user.getPasswordHash() == null) {
-            if (user.getGoogleId() != null) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        "This account uses Google sign-in. Please click \"Continue with Google\" to log in.");
-            }
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password.");
         }
 
@@ -95,6 +90,6 @@ public class AuthService {
     private AuthResponse toResponse(User user) {
         String token = jwtUtil.generate(user.getId(), user.getEmail());
         return new AuthResponse(token, user.getId(), user.getName(),
-                user.getEmail(), user.getPlan(), user.getPictureUrl());
+                user.getEmail(), user.getPlan());
     }
 }

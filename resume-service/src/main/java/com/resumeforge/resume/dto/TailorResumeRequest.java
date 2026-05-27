@@ -1,13 +1,9 @@
 package com.resumeforge.resume.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import java.util.UUID;
 
 public class TailorResumeRequest {
 
-    @NotNull
-    private UUID userId;
     @NotBlank
     private String companyName;
     @NotBlank
@@ -16,8 +12,6 @@ public class TailorResumeRequest {
     private String jobDescription;
     private String requiredSkills;
 
-    public UUID getUserId() { return userId; }
-    public void setUserId(UUID userId) { this.userId = userId; }
     public String getCompanyName() { return companyName; }
     public void setCompanyName(String companyName) { this.companyName = companyName; }
     public String getJobTitle() { return jobTitle; }

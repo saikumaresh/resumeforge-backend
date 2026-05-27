@@ -15,4 +15,7 @@ public interface MasterResumeRepository extends JpaRepository<MasterResume, UUID
     // Fix N+1: JOIN FETCH sections in a single query
     @Query("SELECT r FROM MasterResume r LEFT JOIN FETCH r.sections WHERE r.id = :id")
     Optional<MasterResume> findByIdWithSections(@Param("id") UUID id);
+
+    @Query("SELECT r FROM MasterResume r LEFT JOIN FETCH r.sections WHERE r.userId = :userId ORDER BY r.createdAt DESC")
+    List<MasterResume> findByUserIdWithSections(@Param("userId") UUID userId);
 }

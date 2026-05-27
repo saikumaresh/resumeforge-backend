@@ -1,8 +1,10 @@
 package com.resumeforge.resume.dto;
 
+import jakarta.validation.constraints.NotBlank;
 import java.util.Map;
 
 public class ChatRequest {
+    @NotBlank(message = "message must not be blank")
     private String message;
     private Map<String, String> sections;
     private String targetSection;

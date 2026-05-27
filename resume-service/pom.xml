@@ -102,11 +102,6 @@
             <version>1.4.7</version>
         </dependency>
 
-        <!-- ── HTTP client for Google token verification ──────────── -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
     </dependencies>
 
     <build>

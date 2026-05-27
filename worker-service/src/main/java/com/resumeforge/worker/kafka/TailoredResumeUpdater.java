@@ -31,6 +31,12 @@ public class TailoredResumeUpdater {
     public void saveAndComplete(UUID tailoredResumeId, Map<String, String> sections, String pdfPath,
                                  int totalScore, int keywordScore, int sectionScore, int actionVerbScore,
                                  String missingKeywords) {
+        // Delete any pre-existing sections for idempotent retry safety
+        entityManager.createNativeQuery(
+            "DELETE FROM tailored_resume_sections WHERE tailored_resume_id = ?"
+        ).setParameter(1, tailoredResumeId)
+         .executeUpdate();
+
         int position = 0;
         for (Map.Entry<String, String> entry : sections.entrySet()) {
             if (entry.getValue() == null || entry.getValue().isBlank()) continue; // skip empty sections

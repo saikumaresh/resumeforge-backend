@@ -11,7 +11,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/resumes")
-@CrossOrigin(origins = {"http://localhost:3001", "http://localhost:3000"})
 public class ResumeController {
 
     private final ResumeService resumeService;
@@ -71,7 +70,7 @@ public class ResumeController {
     @PostMapping("/tailored/{tailoredResumeId}/chat")
     public ResponseEntity<ChatResponse> chatWithResume(
             @PathVariable UUID tailoredResumeId,
-            @RequestBody ChatRequest request) {
+            @Valid @RequestBody ChatRequest request) {
         return ResponseEntity.ok(chatService.chat(request));
     }
 

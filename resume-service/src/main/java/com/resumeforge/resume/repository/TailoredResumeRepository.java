@@ -12,8 +12,8 @@ public interface TailoredResumeRepository extends JpaRepository<TailoredResume, 
 
     List<TailoredResume> findByMasterResumeId(UUID masterResumeId);
 
-    /** Count tailored resumes created by a user since a given timestamp (for quota checks). */
-    @Query("SELECT COUNT(r) FROM TailoredResume r WHERE r.masterResume.userId = :userId AND r.createdAt >= :since")
+    /** Count tailored resumes created by a user since a given timestamp (for quota checks), excluding FAILED. */
+    @Query("SELECT COUNT(r) FROM TailoredResume r WHERE r.masterResume.userId = :userId AND r.createdAt >= :since AND r.status <> com.resumeforge.resume.model.TailoredResume.TailoringStatus.FAILED")
     long countByUserIdSince(@Param("userId") UUID userId, @Param("since") LocalDateTime since);
 
     @Query("SELECT r FROM TailoredResume r LEFT JOIN FETCH r.sections WHERE r.masterResume.id = :masterResumeId")

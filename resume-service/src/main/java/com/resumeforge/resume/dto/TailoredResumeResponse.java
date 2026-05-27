@@ -10,6 +10,7 @@ public class TailoredResumeResponse {
     private UUID id;
     private UUID masterResumeId;
     private UUID jobDescriptionId;
+    private UUID userId;
     private String status;
     private Integer atsScore;
     private Integer keywordScore;
@@ -28,6 +29,8 @@ public class TailoredResumeResponse {
     public void setMasterResumeId(UUID masterResumeId) { this.masterResumeId = masterResumeId; }
     public UUID getJobDescriptionId() { return jobDescriptionId; }
     public void setJobDescriptionId(UUID jobDescriptionId) { this.jobDescriptionId = jobDescriptionId; }
+    public UUID getUserId() { return userId; }
+    public void setUserId(UUID userId) { this.userId = userId; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public Integer getAtsScore() { return atsScore; }

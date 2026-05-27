@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -50,8 +51,20 @@ public class ResumeService {
                 .register(meterRegistry);
     }
 
+    private UUID getCallerUserId() {
+        return (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+    }
+
+    private void assertOwnership(UUID resourceOwnerId) {
+        UUID caller = getCallerUserId();
+        if (!caller.equals(resourceOwnerId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+        }
+    }
+
     @Transactional
     public MasterResumeResponse createMasterResume(UUID userId, CreateMasterResumeRequest request) {
+        assertOwnership(userId);
         MDC.put("userId", userId.toString());
         log.info("Creating master resume for user={}", userId);
 
@@ -65,7 +78,12 @@ public class ResumeService {
                     .map(s -> {
                         MasterResumeSection sec = new MasterResumeSection();
                         sec.setMasterResume(resume);
-                        sec.setSectionType(MasterResumeSection.SectionType.valueOf(s.getSectionType()));
+                        try {
+                            sec.setSectionType(MasterResumeSection.SectionType.valueOf(s.getSectionType().toUpperCase().trim()));
+                        } catch (IllegalArgumentException e) {
+                            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                "Invalid section type '" + s.getSectionType() + "'. Valid: " + java.util.Arrays.toString(MasterResumeSection.SectionType.values()));
+                        }
                         sec.setContent(s.getContent());
                         sec.setPosition(s.getPosition());
                         return sec;
@@ -81,15 +99,17 @@ public class ResumeService {
     }
 
     public List<MasterResumeResponse> getMasterResumes(UUID userId) {
-        return masterResumeRepository.findByUserId(userId).stream()
+        assertOwnership(userId);
+        return masterResumeRepository.findByUserIdWithSections(userId).stream()
                 .map(this::toMasterResumeResponse)
                 .collect(Collectors.toList());
     }
 
     public MasterResumeResponse getMasterResumeWithSections(UUID resumeId) {
-        MasterResume resume = masterResumeRepository.findByIdWithSections(resumeId)
+        MasterResume masterResume = masterResumeRepository.findByIdWithSections(resumeId)
                 .orElseThrow(() -> new RuntimeException("Resume not found: " + resumeId));
-        return toMasterResumeResponse(resume);
+        assertOwnership(masterResume.getUserId());
+        return toMasterResumeResponse(masterResume);
     }
 
     @Transactional
@@ -99,24 +119,26 @@ public class ResumeService {
         MasterResume masterResume = masterResumeRepository.findByIdWithSections(masterResumeId)
                 .orElseThrow(() -> new RuntimeException("Master resume not found: " + masterResumeId));
 
-        // ── Plan quota check ──────────────────────────────────────────────────
+        // ── BOLA ownership check ──────────────────────────────────────────────
         UUID userId = masterResume.getUserId();
-        userRepository.findById(userId).ifPresent(user -> {
-            if ("FREE".equals(user.getPlan())) {
-                LocalDateTime monthStart = LocalDateTime.now(ZoneOffset.UTC)
-                        .withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
-                long monthlyCount = tailoredResumeRepository.countByUserIdSince(userId, monthStart);
-                if (monthlyCount >= FREE_PLAN_MONTHLY_LIMIT) {
-                    log.warn("[QUOTA] FREE plan limit reached for userId={} count={}", userId, monthlyCount);
-                    throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED,
-                            "Free plan limit reached (" + FREE_PLAN_MONTHLY_LIMIT + " applications/month). " +
-                            "Upgrade to PRO for unlimited tailoring.");
-                }
+        assertOwnership(userId);
+
+        // ── Plan quota check ──────────────────────────────────────────────────
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User account not found"));
+        if ("FREE".equals(user.getPlan())) {
+            LocalDateTime monthStart = LocalDateTime.now(ZoneOffset.UTC)
+                    .withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
+            long monthlyCount = tailoredResumeRepository.countByUserIdSince(userId, monthStart);
+            if (monthlyCount >= FREE_PLAN_MONTHLY_LIMIT) {
+                log.warn("[QUOTA] FREE plan limit reached for userId={} count={}", userId, monthlyCount);
+                throw new ResponseStatusException(HttpStatus.PAYMENT_REQUIRED,
+                        "Free plan limit reached (" + FREE_PLAN_MONTHLY_LIMIT + " applications/month). Upgrade to PRO for unlimited tailoring.");
             }
-        });
+        }
 
         JobDescription jd = new JobDescription();
-        jd.setUserId(request.getUserId());
+        jd.setUserId(userId);
         jd.setCompanyName(request.getCompanyName());
         jd.setJobTitle(request.getJobTitle());
         jd.setDescription(request.getJobDescription());
@@ -135,13 +157,10 @@ public class ResumeService {
 
         TailoringRequestedEvent event = new TailoringRequestedEvent(
                 saved.getId(), masterResumeId, savedJd.getId(),
-                request.getUserId(), masterContent, request.getJobDescription()
+                userId, masterContent, request.getJobDescription()
         );
-        boolean kafkaOk = tailoringProducer.publish(event);
+        tailoringProducer.publish(event);
         tailoringRequestCounter.increment();
-        if (!kafkaOk) {
-            log.warn("Kafka publish failed for tailoredResumeId={} — job saved as PENDING for manual retry", saved.getId());
-        }
 
         log.info("Tailoring triggered tailoredResumeId={} jobTitle={}", saved.getId(), request.getJobTitle());
         MDC.clear();
@@ -159,13 +178,15 @@ public class ResumeService {
             throw new IllegalStateException("Can only retry FAILED tailoring jobs (current status: " + tailoredResume.getStatus() + ")");
         }
 
-        // Reset status to PENDING
-        tailoredResume.setStatus(TailoredResume.TailoringStatus.PENDING);
-        tailoredResumeRepository.save(tailoredResume);
-
         // Re-build master content
         MasterResume masterResume = masterResumeRepository.findByIdWithSections(tailoredResume.getMasterResume().getId())
                 .orElseThrow(() -> new RuntimeException("Master resume not found"));
+
+        assertOwnership(masterResume.getUserId());
+
+        // Reset status to PENDING
+        tailoredResume.setStatus(TailoredResume.TailoringStatus.PENDING);
+        tailoredResumeRepository.save(tailoredResume);
 
         String masterContent = masterResume.getSections().stream()
                 .map(s -> s.getSectionType() + ":\n" + s.getContent())
@@ -177,11 +198,8 @@ public class ResumeService {
                 tailoredResume.getId(), masterResume.getId(), jd.getId(),
                 jd.getUserId(), masterContent, jd.getDescription()
         );
-        boolean kafkaOk = tailoringProducer.publish(event);
+        tailoringProducer.publish(event);
         tailoringRequestCounter.increment();
-        if (!kafkaOk) {
-            log.warn("Kafka publish failed on retry for tailoredResumeId={}", tailoredResumeId);
-        }
 
         log.info("Tailoring retried tailoredResumeId={}", tailoredResumeId);
         MDC.clear();
@@ -192,10 +210,12 @@ public class ResumeService {
         TailoredResume resume = tailoredResumeRepository.findByIdWithSectionsAndScore(tailoredResumeId)
                 .orElseGet(() -> tailoredResumeRepository.findById(tailoredResumeId)
                         .orElseThrow(() -> new RuntimeException("Tailored resume not found: " + tailoredResumeId)));
+        assertOwnership(resume.getMasterResume().getUserId());
         return toTailoredResumeResponse(resume);
     }
 
     public List<TailoredResumeResponse> getUserTailoredResumes(UUID userId) {
+        assertOwnership(userId);
         return tailoredResumeRepository.findByUserIdWithSections(userId).stream()
                 .map(this::toTailoredResumeResponse)
                 .collect(Collectors.toList());
@@ -203,8 +223,15 @@ public class ResumeService {
 
     @Transactional
     public TailoredResumeResponse updateTailoredSections(UUID tailoredResumeId, Map<String, String> newSections) {
+        newSections.forEach((key, value) -> {
+            if (value != null && value.length() > 10_000) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Section content exceeds maximum length of 10000 characters for key: " + key);
+            }
+        });
         TailoredResume resume = tailoredResumeRepository.findById(tailoredResumeId)
                 .orElseThrow(() -> new RuntimeException("Tailored resume not found: " + tailoredResumeId));
+        assertOwnership(resume.getMasterResume().getUserId());
 
         // Update existing sections content
         resume.getSections().forEach(section -> {
@@ -220,6 +247,7 @@ public class ResumeService {
 
     @Transactional
     public MasterResumeResponse upsertMasterResume(UUID userId, String content) {
+        assertOwnership(userId);
         List<MasterResume> existing = masterResumeRepository.findByUserId(userId);
         MasterResume resume;
         if (!existing.isEmpty()) {
@@ -272,6 +300,7 @@ public class ResumeService {
         resp.setId(r.getId());
         resp.setMasterResumeId(r.getMasterResume().getId());
         resp.setJobDescriptionId(r.getJobDescription().getId());
+        resp.setUserId(r.getMasterResume().getUserId());
         resp.setStatus(r.getStatus().name());
         resp.setPdfDownloadUrl(r.getPdfPath() != null ? "/api/v1/exports/" + r.getId() + "/pdf" : null);
         resp.setCreatedAt(r.getCreatedAt());

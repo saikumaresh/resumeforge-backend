@@ -18,16 +18,19 @@ public class TailoringProducer {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    public boolean publish(TailoringRequestedEvent event) {
+    public void publish(TailoringRequestedEvent event) {
         log.info("Publishing tailoring request for resumeId={}", event.getTailoredResumeId());
-        try {
-            kafkaTemplate.send(TOPIC, event.getTailoredResumeId().toString(), event);
-            log.info("Kafka message queued for resumeId={}", event.getTailoredResumeId());
-            return true;
-        } catch (Exception e) {
-            log.error("Failed to publish Kafka event for resumeId={}: {} — {}",
-                    event.getTailoredResumeId(), e.getClass().getSimpleName(), e.getMessage());
-            return false;
-        }
+        kafkaTemplate.send(TOPIC, event.getTailoredResumeId().toString(), event)
+            .whenComplete((result, ex) -> {
+                if (ex != null) {
+                    log.error("KAFKA DELIVERY FAILED for resumeId={}: {}",
+                        event.getTailoredResumeId(), ex.getMessage());
+                } else {
+                    log.debug("Kafka delivery confirmed for resumeId={} partition={} offset={}",
+                        event.getTailoredResumeId(),
+                        result.getRecordMetadata().partition(),
+                        result.getRecordMetadata().offset());
+                }
+            });
     }
 }

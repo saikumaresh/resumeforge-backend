@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
+    <springProperty name="appEnv" source="spring.profiles.active" defaultValue="production"/>
+
     <appender name="CONSOLE_JSON" class="ch.qos.logback.core.ConsoleAppender">
         <encoder class="net.logstash.logback.encoder.LogstashEncoder">
             <fieldNames>
@@ -7,7 +9,7 @@
                 <version>[ignore]</version>
                 <levelValue>[ignore]</levelValue>
             </fieldNames>
-            <customFields>{"service":"worker-service","environment":"local"}</customFields>
+            <customFields>{"service":"worker-service","environment":"${appEnv}"}</customFields>
         </encoder>
     </appender>
 

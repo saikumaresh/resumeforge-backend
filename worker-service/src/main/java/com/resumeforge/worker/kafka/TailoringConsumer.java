@@ -2,6 +2,7 @@ package com.resumeforge.worker.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.resumeforge.worker.guardrails.TailoringGuardrailValidator;
+import com.resumeforge.worker.idempotency.IdempotencyService;
 import com.resumeforge.worker.llm.OllamaClient;
 import com.resumeforge.worker.scoring.ATSScorer;
 import org.slf4j.Logger;
@@ -15,6 +16,10 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * ✅ PHASE 1.4 FIX: Kafka message idempotency implemented.
+ * Prevents duplicate processing of resume tailoring requests.
+ */
 @Component
 public class TailoringConsumer {
 
@@ -25,17 +30,20 @@ public class TailoringConsumer {
     private final ATSScorer atsScorer;
     private final ObjectMapper objectMapper;
     private final TailoringGuardrailValidator guardrailValidator;
+    private final IdempotencyService idempotencyService;
 
     public TailoringConsumer(OllamaClient ollamaClient,
                               TailoredResumeUpdater resumeUpdater,
                               ATSScorer atsScorer,
                               ObjectMapper objectMapper,
-                              TailoringGuardrailValidator guardrailValidator) {
-        this.ollamaClient       = ollamaClient;
-        this.resumeUpdater      = resumeUpdater;
-        this.atsScorer          = atsScorer;
-        this.objectMapper       = objectMapper;
-        this.guardrailValidator = guardrailValidator;
+                              TailoringGuardrailValidator guardrailValidator,
+                              IdempotencyService idempotencyService) {
+        this.ollamaClient        = ollamaClient;
+        this.resumeUpdater       = resumeUpdater;
+        this.atsScorer           = atsScorer;
+        this.objectMapper        = objectMapper;
+        this.guardrailValidator  = guardrailValidator;
+        this.idempotencyService  = idempotencyService;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
@@ -191,6 +199,12 @@ public class TailoringConsumer {
             String masterContent    = String.valueOf(event.get("masterResumeContent"));
             String jobDescription   = String.valueOf(event.get("jobDescriptionText"));
 
+            // ✅ PHASE 1.4 FIX: Check idempotency
+            if (idempotencyService.isDuplicate(tailoredResumeId)) {
+                log.info("Skipping duplicate message for resumeId={}", tailoredResumeId);
+                return;  // Already processed, skip
+            }
+
             resumeUpdater.updateStatus(tailoredResumeId, "PROCESSING");
 
             // ── 1. Call Ollama ───────────────────────────────────────────────
@@ -256,10 +270,17 @@ public class TailoringConsumer {
             log.info("Tailoring completed resumeId={} pdfPath={} sections={}",
                     tailoredResumeId, pdfPath, sections.keySet());
 
+            // ✅ PHASE 1.4 FIX: Mark as processed in Redis
+            idempotencyService.markAsProcessed(tailoredResumeId,
+                    "score=" + score.totalScore());
+
         } catch (Exception e) {
             log.error("Tailoring failed for resumeId={}: {}", tailoredResumeIdStr, e.getMessage(), e);
             try {
-                resumeUpdater.updateStatus(UUID.fromString(tailoredResumeIdStr), "FAILED");
+                UUID tailoredResumeId = UUID.fromString(tailoredResumeIdStr);
+                resumeUpdater.updateStatus(tailoredResumeId, "FAILED");
+                // ✅ PHASE 1.4 FIX: Mark failure to avoid infinite retries
+                idempotencyService.markAsFailed(tailoredResumeId, e.getMessage());
             } catch (Exception ex) {
                 log.error("Failed to mark FAILED status: {}", ex.getMessage());
             }

@@ -11,7 +11,7 @@ spring:
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:resumeforge}
     username: ${DATABASE_USERNAME:resumeforge}
-    password: ${DATABASE_PASSWORD:resumeforge123}
+    password: ${DATABASE_PASSWORD:NOT_SET_IN_ENV}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 5
@@ -58,7 +58,7 @@ management:
 
 auth:
   jwt:
-    secret: ${JWT_SECRET:resumeforge-jwt-secret-key-must-be-at-least-32-characters-long}
+    secret: ${JWT_SECRET:NOT_SET_IN_ENV_MUST_BE_32_CHARS_MIN}
 
 
 ollama:

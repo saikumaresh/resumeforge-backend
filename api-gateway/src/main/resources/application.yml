@@ -8,7 +8,7 @@ spring:
     gateway:
       routes:
         - id: resume-service
-          uri: http://localhost:8081
+          uri: ${RESUME_SERVICE_URL:http://localhost:8081}
           predicates:
             - Path=/api/v1/resumes/**
           filters:
@@ -18,15 +18,15 @@ spring:
                 redis-rate-limiter.burstCapacity: 20
                 key-resolver: "#{@ipKeyResolver}"
         - id: worker-service
-          uri: http://localhost:8082
+          uri: ${WORKER_SERVICE_URL:http://localhost:8082}
           predicates:
             - Path=/api/v1/exports/**
       default-filters:
         - AddRequestHeader=X-Gateway-Source, resumeforge-gateway
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
 management:
   endpoints:
@@ -34,6 +34,22 @@ management:
       exposure:
         include: health,metrics
 
+auth:
+  jwt:
+    secret: ${JWT_SECRET:NOT_SET_IN_ENV_MUST_BE_32_CHARS_MIN}
+
+# JWT Route Protection Configuration (Phase 1.7 fix)
+jwt:
+  unprotected-routes:
+    - /actuator
+    - /api/v1/auth/login
+    - /api/v1/auth/register
+    - /api/v1/auth/health
+    - /health
+    - /metrics
+    - /prometheus
+
 logging:
   level:
     org.springframework.cloud.gateway: DEBUG
+    com.resumeforge.gateway: ${LOG_LEVEL:INFO}

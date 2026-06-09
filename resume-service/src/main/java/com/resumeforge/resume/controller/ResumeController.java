@@ -5,6 +5,7 @@ import com.resumeforge.resume.service.ResumeService;
 import com.resumeforge.resume.service.ResumeChatService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
@@ -25,7 +26,7 @@ public class ResumeController {
     public ResponseEntity<MasterResumeResponse> createMasterResume(
             @PathVariable UUID userId,
             @Valid @RequestBody CreateMasterResumeRequest request) {
-        return ResponseEntity.ok(resumeService.createMasterResume(userId, request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(resumeService.createMasterResume(userId, request));
     }
 
     @GetMapping("/users/{userId}/master")
@@ -42,7 +43,7 @@ public class ResumeController {
     public ResponseEntity<TailoredResumeResponse> tailorResume(
             @PathVariable UUID masterResumeId,
             @Valid @RequestBody TailorResumeRequest request) {
-        return ResponseEntity.ok(resumeService.triggerTailoring(masterResumeId, request));
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(resumeService.triggerTailoring(masterResumeId, request));
     }
 
     @GetMapping("/tailored/{tailoredResumeId}")
@@ -52,7 +53,7 @@ public class ResumeController {
 
     @PostMapping("/tailored/{tailoredResumeId}/retry")
     public ResponseEntity<TailoredResumeResponse> retryTailoring(@PathVariable UUID tailoredResumeId) {
-        return ResponseEntity.ok(resumeService.retryTailoring(tailoredResumeId));
+        return ResponseEntity.status(HttpStatus.ACCEPTED).body(resumeService.retryTailoring(tailoredResumeId));
     }
 
     @GetMapping("/users/{userId}/tailored")

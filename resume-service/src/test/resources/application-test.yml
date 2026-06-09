@@ -1,0 +1,70 @@
+server:
+  port: 8081
+  error:
+    include-message: never
+    include-binding-errors: never
+
+spring:
+  application:
+    name: resume-service-test
+
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;TRACE_LEVEL_SYSTEM_OUT=3
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+    hikari:
+      maximum-pool-size: 5
+      connection-timeout: 20000
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    database-platform: org.hibernate.dialect.H2Dialect
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.H2Dialect
+        jdbc:
+          batch_size: 10
+          fetch_size: 50
+        order_inserts: true
+        order_updates: true
+
+  flyway:
+    enabled: false
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: test-group
+      auto-offset-reset: earliest
+
+  data:
+    redis:
+      url: redis://localhost:6379
+
+  test:
+    mockmvc:
+      print: true
+
+auth:
+  jwt:
+    secret: test-secret-key-must-be-at-least-32-characters-long-for-hs256
+
+ollama:
+  api-url: http://localhost:11434/v1/chat/completions
+  model: gemma3:12b
+  api-key:
+
+cors:
+  allowed-origins: http://localhost:3000
+
+logging:
+  level:
+    com.resumeforge: DEBUG
+    org.springframework: WARN

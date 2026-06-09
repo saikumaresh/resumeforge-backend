@@ -8,7 +8,7 @@ spring:
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:resumeforge}
     username: ${DATABASE_USERNAME:resumeforge}
-    password: ${DATABASE_PASSWORD:resumeforge123}
+    password: ${DATABASE_PASSWORD:NOT_SET_IN_ENV}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 3
@@ -21,6 +21,10 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
@@ -44,6 +48,33 @@ ollama:
   api-url: ${OLLAMA_API_URL:https://ollama.com/v1/chat/completions}
   model: ${OLLAMA_MODEL:gemma3:12b}
   api-key: ${OLLAMA_API_KEY:}
+
+# Circuit Breaker Configuration (Phase 1.5 fix)
+resilience4j:
+  circuitbreaker:
+    instances:
+      ollama-api:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50.0
+        slowCallRateThreshold: 100.0
+        slowCallDurationThreshold: 2000
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 30000  # 30 seconds
+        ignoreExceptions:
+          - com.resumeforge.worker.llm.OllamaUnavailableException
+  retry:
+    instances:
+      ollama-api:
+        maxAttempts: 3
+        waitDuration: 1000
+        retryExceptions:
+          - org.springframework.web.client.HttpServerErrorException
+          - java.io.IOException
+        ignoreExceptions:
+          - com.resumeforge.worker.llm.OllamaUnavailableException
 
 management:
   endpoints:

@@ -4,8 +4,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.resumeforge.resume.dto.CreateMasterResumeRequest;
 import com.resumeforge.resume.model.User;
 import com.resumeforge.resume.model.MasterResume;
+import com.resumeforge.resume.model.JobDescription;
+import com.resumeforge.resume.model.TailoredResume;
 import com.resumeforge.resume.repository.UserRepository;
 import com.resumeforge.resume.repository.MasterResumeRepository;
+import com.resumeforge.resume.repository.JobDescriptionRepository;
+import com.resumeforge.resume.repository.TailoredResumeRepository;
 import com.resumeforge.resume.auth.JwtUtil;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -60,6 +64,12 @@ class BOLATest {
     private MasterResumeRepository masterResumeRepository;
 
     @Autowired
+    private JobDescriptionRepository jobDescriptionRepository;
+
+    @Autowired
+    private TailoredResumeRepository tailoredResumeRepository;
+
+    @Autowired
     private JwtUtil jwtUtil;
 
     private User user1;
@@ -68,10 +78,13 @@ class BOLATest {
     private MasterResume resume2;
     private String token1;
     private String token2;
+    private UUID otherUsersTailoredResumeId;
 
     @BeforeEach
     void setUp() {
         // Clean up
+        tailoredResumeRepository.deleteAll();
+        jobDescriptionRepository.deleteAll();
         masterResumeRepository.deleteAll();
         userRepository.deleteAll();
 
@@ -100,6 +113,20 @@ class BOLATest {
         resume2.setTitle("User 2 Resume");
         resume2.setSummary("User 2's resume content");
         resume2 = masterResumeRepository.save(resume2);
+
+        // A tailored resume belonging to user2, for cross-tenant chat checks
+        JobDescription jd = new JobDescription();
+        jd.setUserId(user2.getId());
+        jd.setCompanyName("Acme");
+        jd.setJobTitle("Engineer");
+        jd.setDescription("Build things");
+        jd = jobDescriptionRepository.save(jd);
+
+        TailoredResume tailored = new TailoredResume();
+        tailored.setMasterResume(resume2);
+        tailored.setJobDescription(jd);
+        tailored.setStatus(TailoredResume.TailoringStatus.COMPLETED);
+        otherUsersTailoredResumeId = tailoredResumeRepository.save(tailored).getId();
 
         // Generate JWT tokens for each user
         token1 = jwtUtil.generate(user1.getId(), user1.getEmail());
@@ -177,6 +204,24 @@ class BOLATest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(java.util.Map.of("content", "Hacked!"))))
                 .andExpect(status().isForbidden())  // 403 Forbidden (SECURITY)
+                .andReturn();
+    }
+
+    @Test
+    @DisplayName("❌ User CANNOT drive the LLM chat against another user's tailored resume (403 Forbidden)")
+    void testUserCannotChatAboutOtherUserResume() throws Exception {
+        // The chat body carries its own section content, so the endpoint must
+        // authorize on the path id rather than trusting the payload.
+        var body = java.util.Map.of(
+                "message", "Improve this resume",
+                "sections", java.util.Map.of("summary", "anything"),
+                "targetSection", "summary");
+
+        mockMvc.perform(post("/api/v1/resumes/tailored/" + otherUsersTailoredResumeId + "/chat")
+                .header("Authorization", "Bearer " + token1)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(body)))
+                .andExpect(status().isForbidden())
                 .andReturn();
     }
 

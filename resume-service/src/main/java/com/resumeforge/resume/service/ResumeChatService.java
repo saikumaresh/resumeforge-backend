@@ -6,12 +6,16 @@ import com.resumeforge.resume.dto.ChatRequest;
 import com.resumeforge.resume.dto.ChatResponse;
 import com.resumeforge.resume.guardrails.ChatGuardrailValidator;
 import com.resumeforge.resume.guardrails.InputSanitizer;
+import com.resumeforge.resume.model.TailoredResume;
+import com.resumeforge.resume.repository.TailoredResumeRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.*;
 
@@ -33,10 +37,33 @@ public class ResumeChatService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final InputSanitizer inputSanitizer;
     private final ChatGuardrailValidator outputValidator;
+    private final TailoredResumeRepository tailoredResumeRepository;
 
-    public ResumeChatService(InputSanitizer inputSanitizer, ChatGuardrailValidator outputValidator) {
-        this.inputSanitizer  = inputSanitizer;
-        this.outputValidator = outputValidator;
+    public ResumeChatService(InputSanitizer inputSanitizer,
+                             ChatGuardrailValidator outputValidator,
+                             TailoredResumeRepository tailoredResumeRepository) {
+        this.inputSanitizer           = inputSanitizer;
+        this.outputValidator          = outputValidator;
+        this.tailoredResumeRepository = tailoredResumeRepository;
+    }
+
+    /**
+     * Rejects the request unless the caller owns the tailored resume being
+     * discussed. The chat body carries its own section content, so without this
+     * the endpoint would let any authenticated user drive the LLM against an
+     * arbitrary resume id.
+     */
+    private void assertOwnership(UUID tailoredResumeId) {
+        TailoredResume resume = tailoredResumeRepository.findById(tailoredResumeId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Tailored resume not found: " + tailoredResumeId));
+
+        UUID owner  = resume.getMasterResume().getUserId();
+        UUID caller = (UUID) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+        if (!caller.equals(owner)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
+        }
     }
 
     // ── System prompt ─────────────────────────────────────────────────────────
@@ -140,7 +167,10 @@ public class ResumeChatService {
 
     // ── Public API ────────────────────────────────────────────────────────────
 
-    public ChatResponse chat(ChatRequest request) {
+    public ChatResponse chat(UUID tailoredResumeId, ChatRequest request) {
+
+        // ── 0. Authorize ─────────────────────────────────────────────────────
+        assertOwnership(tailoredResumeId);
 
         // ── 1. Sanitize inputs ───────────────────────────────────────────────
         InputSanitizer.SanitizationResult sanitized =

@@ -72,7 +72,7 @@ public class ResumeController {
     public ResponseEntity<ChatResponse> chatWithResume(
             @PathVariable UUID tailoredResumeId,
             @Valid @RequestBody ChatRequest request) {
-        return ResponseEntity.ok(chatService.chat(request));
+        return ResponseEntity.ok(chatService.chat(tailoredResumeId, request));
     }
 
     @PutMapping("/users/{userId}/master")

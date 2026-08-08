@@ -133,21 +133,21 @@ Asynchronous operations return **202 Accepted** with a `PENDING` record; poll th
 ## Testing
 
 ```bash
-mvn test                                  # 75 tests
+mvn test                                  # 76 tests
 mvn test && open resume-service/target/site/jacoco/index.html   # coverage
 ```
 
-**Current state — 75 tests, 0 failures, 0 errors:**
+**Current state — 76 tests, 0 failures, 0 errors:**
 
 | Suite | Tests | Covers |
 |-------|-------|--------|
-| `BOLATest` | 10 | Cross-tenant authorization over HTTP (403/401) |
+| `BOLATest` | 11 | Cross-tenant authorization over HTTP, incl. chat endpoint (403/401) |
 | `AuthServiceTest` | 13 | Registration, login, hashing, email normalisation |
 | `RateLimitFilterTest` | 7 | Sliding-window limits, per-IP isolation, 429 |
 | `ATSScorerTest` + edge cases | 21 | Scoring maths and boundary conditions |
 | `KeywordExtractorTest` + edge cases | 24 | Tokenisation, stop-words, extraction |
 
-**Measured coverage (JaCoCo):** `resume-service` 47.2% line / 50.5% instruction. `worker-service` and `api-gateway` have no test suite — see below.
+**Measured coverage (JaCoCo):** `resume-service` 49.4% line / 52.2% instruction. `worker-service` and `api-gateway` have no test suite — see below.
 
 ---
 

@@ -1,0 +1,23 @@
+[INFO] Reactor Build Order:
+[INFO] Building ResumeForge Backend 1.0.0                                 [1/4]
+[INFO] Building api-gateway 1.0.0                                         [2/4]
+[INFO] Building resume-service 1.0.0                                      [3/4]
+[INFO] Running com.resumeforge.resume.security.BOLATest
+[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.700 s -- in com.resumeforge.resume.security.BOLATest
+[INFO] Running com.resumeforge.resume.auth.RateLimitFilterTest
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.407 s -- in com.resumeforge.resume.auth.RateLimitFilterTest
+[INFO] Running com.resumeforge.resume.scoring.ATSScorerTest
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.078 s -- in com.resumeforge.resume.scoring.ATSScorerTest
+[INFO] Running com.resumeforge.resume.scoring.ATSScorerEdgeCasesTest
+[INFO] Tests run: 12, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in com.resumeforge.resume.scoring.ATSScorerEdgeCasesTest
+[INFO] Running com.resumeforge.resume.scoring.KeywordExtractorTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.008 s -- in com.resumeforge.resume.scoring.KeywordExtractorTest
+[INFO] Running com.resumeforge.resume.scoring.KeywordExtractorEdgeCasesTest
+[INFO] Tests run: 18, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.006 s -- in com.resumeforge.resume.scoring.KeywordExtractorEdgeCasesTest
+[INFO] Running com.resumeforge.resume.service.AuthServiceTest
+[INFO] Tests run: 13, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.878 s -- in com.resumeforge.resume.service.AuthServiceTest
+[INFO] Results:
+[INFO] Tests run: 76, Failures: 0, Errors: 0, Skipped: 0
+[INFO] Building worker-service 1.0.0                                      [4/4]
+[INFO] Reactor Summary for ResumeForge Backend 1.0.0:
+[INFO] BUILD SUCCESS

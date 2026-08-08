@@ -33,7 +33,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Priority: CRITICAL (foundation of all security)
  */
 @DataJpaTest
-@Import({AuthService.class, JwtUtil.class})
+@Import({AuthService.class, JwtUtil.class, BCryptPasswordEncoder.class})
 @ActiveProfiles("test")
 class AuthServiceTest {
 

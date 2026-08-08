@@ -47,6 +47,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
     // Map<ruleKey+ip, Deque<requestTimestampMs>>
     private final Map<String, Deque<Long>> windows = new ConcurrentHashMap<>();
 
+    /** Clears all tracked windows. Package-private — for test isolation only. */
+    void resetForTests() {
+        windows.clear();
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest req,
                                     HttpServletResponse res,

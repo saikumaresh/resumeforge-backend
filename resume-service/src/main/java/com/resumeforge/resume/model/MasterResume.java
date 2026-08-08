@@ -26,7 +26,7 @@ public class MasterResume {
     @Version
     private Integer version;
 
-    @OneToMany(mappedBy = "masterResume", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "masterResume", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @OrderBy("position ASC")
     private List<MasterResumeSection> sections = new ArrayList<>();
 

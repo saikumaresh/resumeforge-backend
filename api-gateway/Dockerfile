@@ -2,7 +2,7 @@
 FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /app
 
-COPY pom.xml /app/parent-pom.xml
+COPY pom.xml /app/pom.xml
 COPY api-gateway/pom.xml /app/api-gateway/pom.xml
 
 WORKDIR /app/api-gateway

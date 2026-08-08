@@ -40,10 +40,17 @@ class RateLimitFilterTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private RateLimitFilter rateLimitFilter;
+
     private LoginRequest loginRequest;
 
     @BeforeEach
     void setUp() {
+        // Each test exercises the filter's request budget from scratch —
+        // the filter is a singleton bean shared across all tests in this class.
+        rateLimitFilter.resetForTests();
+
         // Prepare test login request
         loginRequest = new LoginRequest();
         loginRequest.setEmail("test@example.com");
@@ -88,7 +95,8 @@ class RateLimitFilterTest {
         // Assert
         assertEquals(429, result.getResponse().getStatus());
         String responseBody = result.getResponse().getContentAsString();
-        assertTrue(responseBody.contains("rate limit") || responseBody.contains("too many"));
+        String lowerBody = responseBody.toLowerCase();
+        assertTrue(lowerBody.contains("rate limit") || lowerBody.contains("too many"));
     }
 
     // ════════════════════════════════════════════════════════════════════════════
@@ -187,19 +195,22 @@ class RateLimitFilterTest {
     @Test
     @DisplayName("✅ Rate limits are per IP address (different IPs have separate limits)")
     void testRateLimitPerIpAddress() throws Exception {
-        // Arrange: Make 10 requests from IP 127.0.0.1
+        // RateLimitFilter keys on X-Real-IP (set by the trusted edge proxy), not the
+        // spoofable X-Forwarded-For — see RateLimitFilter#resolveClientIp.
+
+        // Arrange: Make 10 requests from IP 192.168.1.100
         for (int i = 0; i < 10; i++) {
             mockMvc.perform(post("/api/v1/auth/login")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .header("X-Forwarded-For", "192.168.1.100")  // Different IP
+                    .header("X-Real-IP", "192.168.1.100")
                     .content(objectMapper.writeValueAsString(loginRequest)))
                     .andReturn();
         }
 
-        // Act: 11th request from IP 127.0.0.1 should be rate limited
+        // Act: 11th request from IP 192.168.1.100 should be rate limited
         MvcResult result1 = mockMvc.perform(post("/api/v1/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
-                .header("X-Forwarded-For", "192.168.1.100")
+                .header("X-Real-IP", "192.168.1.100")
                 .content(objectMapper.writeValueAsString(loginRequest)))
                 .andReturn();
         assertEquals(429, result1.getResponse().getStatus());
@@ -207,7 +218,7 @@ class RateLimitFilterTest {
         // Act: Request from different IP (192.168.1.101) should NOT be rate limited
         MvcResult result2 = mockMvc.perform(post("/api/v1/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
-                .header("X-Forwarded-For", "192.168.1.101")  // Different IP
+                .header("X-Real-IP", "192.168.1.101")
                 .content(objectMapper.writeValueAsString(loginRequest)))
                 .andReturn();
         assertNotEquals(429, result2.getResponse().getStatus());

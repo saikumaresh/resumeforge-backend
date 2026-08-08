@@ -114,7 +114,7 @@ class BOLATest {
     @DisplayName("✅ User can access their own resume")
     void testUserCanAccessOwnResume() throws Exception {
         // Act: User1 accesses User1's resume with User1's token
-        mockMvc.perform(get("/api/v1/resumes/" + resume1.getId())
+        mockMvc.perform(get("/api/v1/resumes/" + resume1.getId() + "/with-sections")
                 .header("Authorization", "Bearer " + token1)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())  // 200 OK
@@ -129,8 +129,8 @@ class BOLATest {
         request.setTitle("New Resume");
         request.setSummary("New resume content");
 
-        // Act: User1 creates resume with User1's token
-        mockMvc.perform(post("/api/v1/resumes")
+        // Act: User1 creates a master resume under their own userId
+        mockMvc.perform(post("/api/v1/resumes/users/" + user1.getId() + "/master")
                 .header("Authorization", "Bearer " + token1)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
@@ -141,30 +141,17 @@ class BOLATest {
     @Test
     @DisplayName("✅ User can update their own resume")
     void testUserCanUpdateOwnResume() throws Exception {
-        // Arrange
-        CreateMasterResumeRequest request = new CreateMasterResumeRequest();
-        request.setTitle("Updated Resume");
-        request.setSummary("Updated content");
-
-        // Act: User1 updates User1's resume with User1's token
-        mockMvc.perform(put("/api/v1/resumes/" + resume1.getId())
+        // Act: User1 upserts their own master resume with User1's token
+        mockMvc.perform(put("/api/v1/resumes/users/" + user1.getId() + "/master")
                 .header("Authorization", "Bearer " + token1)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+                .content(objectMapper.writeValueAsString(java.util.Map.of("content", "Updated content"))))
                 .andExpect(status().isOk())  // 200 OK
                 .andReturn();
     }
 
-    @Test
-    @DisplayName("✅ User can delete their own resume")
-    void testUserCanDeleteOwnResume() throws Exception {
-        // Act: User1 deletes User1's resume with User1's token
-        mockMvc.perform(delete("/api/v1/resumes/" + resume1.getId())
-                .header("Authorization", "Bearer " + token1)
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isNoContent())  // 204 No Content
-                .andReturn();
-    }
+    // Note: ResumeController exposes no DELETE endpoint for master resumes today,
+    // so there is nothing to authorize-test for resume deletion yet.
 
     // ════════════════════════════════════════════════════════════════════════════
     // NEGATIVE TESTS: User CANNOT access other user's data
@@ -174,7 +161,7 @@ class BOLATest {
     @DisplayName("❌ User CANNOT read another user's resume (403 Forbidden)")
     void testUserCannotReadOtherUserResume() throws Exception {
         // Act: User1 tries to access User2's resume with User1's token
-        mockMvc.perform(get("/api/v1/resumes/" + resume2.getId())
+        mockMvc.perform(get("/api/v1/resumes/" + resume2.getId() + "/with-sections")
                 .header("Authorization", "Bearer " + token1)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isForbidden())  // 403 Forbidden (SECURITY)
@@ -184,40 +171,23 @@ class BOLATest {
     @Test
     @DisplayName("❌ User CANNOT update another user's resume (403 Forbidden)")
     void testUserCannotUpdateOtherUserResume() throws Exception {
-        // Arrange
-        CreateMasterResumeRequest request = new CreateMasterResumeRequest();
-        request.setTitle("Hacked!");
-        request.setSummary("User 1 tries to modify User 2's resume");
-
-        // Act: User1 tries to update User2's resume with User1's token
-        mockMvc.perform(put("/api/v1/resumes/" + resume2.getId())
+        // Act: User1 tries to upsert User2's master resume with User1's token
+        mockMvc.perform(put("/api/v1/resumes/users/" + user2.getId() + "/master")
                 .header("Authorization", "Bearer " + token1)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request)))
+                .content(objectMapper.writeValueAsString(java.util.Map.of("content", "Hacked!"))))
                 .andExpect(status().isForbidden())  // 403 Forbidden (SECURITY)
                 .andReturn();
     }
 
     @Test
-    @DisplayName("❌ User CANNOT delete another user's resume (403 Forbidden)")
-    void testUserCannotDeleteOtherUserResume() throws Exception {
-        // Act: User1 tries to delete User2's resume with User1's token
-        mockMvc.perform(delete("/api/v1/resumes/" + resume2.getId())
-                .header("Authorization", "Bearer " + token1)
-                .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isForbidden())  // 403 Forbidden (SECURITY)
-                .andReturn();
-    }
-
-    @Test
-    @DisplayName("❌ User CANNOT access other user's resumes list filtered by owner")
+    @DisplayName("❌ User CANNOT list another user's resumes (403 Forbidden)")
     void testUserCannotListOtherUserResumes() throws Exception {
         // Act: User1 tries to list User2's resumes
-        mockMvc.perform(get("/api/v1/resumes?userId=" + user2.getId())
+        mockMvc.perform(get("/api/v1/resumes/users/" + user2.getId() + "/master")
                 .header("Authorization", "Bearer " + token1)
                 .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isForbidden())  // 403 Forbidden (if supported)
-                // OR: should only return User1's resumes, not User2's
+                .andExpect(status().isForbidden())  // 403 Forbidden (SECURITY)
                 .andReturn();
     }
 
@@ -229,7 +199,7 @@ class BOLATest {
     @DisplayName("❌ User with invalid token cannot access resumes (401 Unauthorized)")
     void testInvalidTokenRejected() throws Exception {
         // Act: Access with invalid token
-        mockMvc.perform(get("/api/v1/resumes/" + resume1.getId())
+        mockMvc.perform(get("/api/v1/resumes/" + resume1.getId() + "/with-sections")
                 .header("Authorization", "Bearer invalid_token_xyz")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized())  // 401 Unauthorized
@@ -240,7 +210,7 @@ class BOLATest {
     @DisplayName("❌ User without token cannot access protected endpoints (401 Unauthorized)")
     void testMissingTokenRejected() throws Exception {
         // Act: Access without token
-        mockMvc.perform(get("/api/v1/resumes/" + resume1.getId())
+        mockMvc.perform(get("/api/v1/resumes/" + resume1.getId() + "/with-sections")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isUnauthorized())  // 401 Unauthorized
                 .andReturn();
@@ -253,7 +223,7 @@ class BOLATest {
         // (This should fail at JWT validation layer)
 
         // Act: User1 with User1's valid token should NOT be able to access User2 data
-        mockMvc.perform(get("/api/v1/resumes/" + resume2.getId())
+        mockMvc.perform(get("/api/v1/resumes/" + resume2.getId() + "/with-sections")
                 .header("Authorization", "Bearer " + token1)
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isForbidden())  // 403 Forbidden
@@ -279,14 +249,13 @@ class BOLATest {
     /**
      * BOLA Prevention Checklist:
      *
-     * ✅ User can read own data (GET /resource/{id})
-     * ✅ User can create own data (POST /resources)
-     * ✅ User can update own data (PUT /resource/{id})
-     * ✅ User can delete own data (DELETE /resource/{id})
+     * ✅ User can read own data (GET /resources/{id}/with-sections)
+     * ✅ User can create own data (POST /resources/users/{userId}/master)
+     * ✅ User can update own data (PUT /resources/users/{userId}/master)
+     * ⏭️ Delete not covered — no DELETE endpoint exists on ResumeController yet
      *
      * ❌ User CANNOT read other user's data (403 Forbidden)
      * ❌ User CANNOT update other user's data (403 Forbidden)
-     * ❌ User CANNOT delete other user's data (403 Forbidden)
      * ❌ User CANNOT list other user's data (403 Forbidden)
      *
      * ❌ Invalid token rejected (401 Unauthorized)

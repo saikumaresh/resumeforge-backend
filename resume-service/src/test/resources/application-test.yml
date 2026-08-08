@@ -50,7 +50,7 @@ spring:
 
   test:
     mockmvc:
-      print: true
+      print: default
 
 auth:
   jwt:

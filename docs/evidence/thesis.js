@@ -748,7 +748,7 @@ body.push(
   ),
   spacerAfterTable(),
   ...figure('fig_6_02_benchmark', '6.02', 'N+1 optimisation: queries and latency, before and after'),
-  p('The statement count falls from 31 to 1, one query for the parents plus one per resume, collapsed into a single fetch-joined query. Median latency falls from 3.487 ms to 1.126 ms, an improvement of 67.7%. The proportional gain would be substantially larger against a networked database, because each eliminated statement there costs a network round trip instead of an in-process call.'),
+  p('The statement count falls from 31 to 1. The original 31 were one query for the parent rows plus one for each resume, and the fetch join collapses them into a single statement. Median latency falls from 3.487 ms to 1.126 ms, an improvement of 67.7%. The proportional gain would be substantially larger against a networked database, because each eliminated statement there costs a network round trip instead of an in-process call.'),
   p('The result also scales differently. The lazy implementation is O(N) in database round trips, so its cost grows with the number of resumes a user owns; the fetch-joined implementation is O(1) in round trips regardless. The optimisation therefore matters most for the users who have used the product most, which is the correct place for it to matter.'),
   pageBreak(),
 );
@@ -909,7 +909,7 @@ body.push(
   p('The cascade defect described in Section 5.3 corrupted data on the most frequently used write path while raising no error and failing no test. Finding it required reasoning about ORM semantics rather than observing a failure. The general lesson is that an ORM abstracts the database but does not remove the need to understand what it emits.'),
 
   sub3('Authorisation belongs where it cannot be bypassed'),
-  p('Placing the ownership check at the service boundary instead of in controllers was validated when a review found an endpoint that had been written without it. Because the convention was to enforce in the service, the gap was localised to one class and closing it was a small change with a regression test, instead of an audit of every controller.'),
+  p('Placing the ownership check at the service boundary instead of in controllers was validated when a review found an endpoint that had been written without it. Because the convention was to enforce in the service, the gap was localised to one class and closing it was a small change with a regression test rather than an audit of every controller.'),
 
   sub3('Documentation that contradicts the code is worse than none'),
   p('Several planning documents in the repository described work as outstanding that had been completed, and one specified a component that was never written. A reader encountering them would have concluded the system was half-finished. They were removed and the project README rewritten against the actual code with every claim verified. Accurate documentation is part of the deliverable, not an accompaniment to it.'),

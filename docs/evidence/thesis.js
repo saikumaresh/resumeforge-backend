@@ -19,12 +19,12 @@ const FIG = path.join(__dirname, 'figures');
 /* ── candidate details ─────────────────────────────────────────── */
 const D = {
   name:        'Sai Kumaresh',
-  email:       '⟨Registered Scaler Email ID⟩',
+  email:       'saikumaresh007@gmail.com',
   supervisor:  'Naman Bhalla',
-  monthYear:   '⟨Month, Year⟩',
-  submitDate:  '⟨DD/MM/YYYY⟩',
-  moduleStart: '⟨Module start date⟩',
-  moduleEnd:   '⟨Module end date⟩',
+  monthYear:   'August, 2026',
+  submitDate:  '10/08/2026',
+  moduleStart: '………………………',
+  moduleEnd:   '………………………',
 };
 
 /* ── typography ────────────────────────────────────────────────── */
@@ -248,8 +248,8 @@ front.push(
       ['5.02', 'Foreign key constraints', ''],
       ['5.03', 'Cardinality of relations', ''],
       ['6.01', 'N+1 optimisation benchmark results', ''],
-      ['8.02', 'Automated test suites', ''],
-      ['8.03', 'Technology selection and rationale', ''],
+      ['8.03', 'Automated test suites', ''],
+      ['8.04', 'Technology selection and rationale', ''],
       ['9.01', 'Known limitations of the delivered system', ''],
     ],
     [1.2, 5, 1.2],
@@ -384,6 +384,18 @@ body.push(
 
   sub3('Primary use case: Request tailoring'),
   p('Actor: Job Seeker. Precondition: the user is authenticated and owns at least one master resume. Main flow: the user submits a job description against a master resume; the system verifies ownership, persists the job description and a tailored-resume record in PENDING, publishes an event and returns 202 Accepted. The worker consumes the event, invokes the model, validates the output, computes the score and sets the record to COMPLETED. The user polls until the status changes. Alternative flow: if the model call fails or its output fails validation, the record is set to FAILED and the user may invoke the retry use case. Exception flow: if the user does not own the master resume, the request is refused with 403 and nothing is persisted.'),
+
+  sub3('Use case: Register and authenticate'),
+  p('Actor: Job Seeker. Precondition: none. Main flow: the visitor submits a name, email address and password; the system normalises the email, rejects it if already registered, hashes the password with BCrypt, persists the account and returns a signed token with 201 Created. Alternative flow: an email already in use is refused with 409 Conflict, and the response deliberately does not reveal whether the existing account belongs to the requester. Exception flow: more than five registration attempts from one client within a minute are refused with 429, which is what makes automated account creation impractical.'),
+
+  sub3('Use case: Maintain the master resume'),
+  p('Actor: Job Seeker. Precondition: authenticated. Main flow: the user submits resume content; the system verifies that the target user identifier matches the authenticated principal, replaces the stored sections and returns the saved representation. Alternative flow: where no resume exists one is created, so the caller does not need to distinguish create from update. Exception flow: a request naming another user is refused with 403 before any write; a section beyond the length limit is refused with 400. This path is guarded by optimistic locking, so a save against a stale version fails rather than overwriting a concurrent edit.'),
+
+  sub3('Use case: Review and revise a tailored resume'),
+  p('Actor: Job Seeker. Precondition: a tailored resume in COMPLETED state. Main flow: the user retrieves the tailored resume with its ATS score breakdown, edits individual sections directly, or asks the model for a revision through the chat endpoint. Exception flow: every one of these operations authorises on the resume identifier, so a user supplying an identifier they do not own receives 403 — including the chat endpoint, which is discussed in Section 4.2 because it was the one place this check was originally missing.'),
+
+  sub3('Use case: Recover a failed tailoring job'),
+  p('Actor: Job Seeker, with Worker Service participating. Precondition: a tailored resume in FAILED state. Main flow: the user invokes the retry endpoint; the system resets the record to PENDING and republishes the event, and the worker processes it as it would a new request. Exception flow: a record in any state other than FAILED is refused, so a completed result cannot be destroyed by an accidental retry. This use case exists because the system integrates an external dependency that fails: without it, a transient model outage would permanently strand the request.'),
 
   sub('3.4 Feature set'),
   tableCaption('3.03', 'Feature set'),
@@ -715,7 +727,12 @@ body.push(
   sub('7.6 Secrets and supporting services'),
   p('Database credentials and the JWT signing secret are held in AWS Secrets Manager and injected at container start, never baked into an image or committed. This matches the application’s existing configuration model, in which every production value resolves from an environment variable and the application fails to start if a required one is absent. S3 provides object storage for generated PDF documents; as Section 9 records, PDF generation is implemented but not currently wired, and the absence of object storage is precisely why.'),
 
-  sub('7.7 What is currently deployed'),
+  sub('7.7 Scaling characteristics'),
+  p('The two services scale on different signals, which is the operational return on having separated them. The resume service is bound by request rate and database connections and scales horizontally behind the load balancer; because authentication is stateless, any instance can serve any request and adding one requires no session migration. The worker service is bound by model throughput and scales on Kafka consumer lag, the count of events not yet processed. That distinction is the point: a backlog of tailoring jobs adds worker instances without adding API instances that would sit idle.'),
+  p('The limit on worker scaling is the topic partition count, since Kafka assigns each partition to at most one consumer in a group — adding consumers beyond the partition count adds no throughput. Partitioning by tailored-resume identifier would distribute load evenly while keeping all events for one job ordered. Beyond that the constraint becomes the model endpoint itself, which is a fixed external capacity and the reason the input size caps in Section 6 exist: they bound the cost and latency of a single request so that one oversized document cannot consume the capacity of many normal ones.'),
+  p('The database is the component least able to scale horizontally. Reads dominate this workload, so the first step would be a read replica serving the listing endpoints, with writes continuing to the primary. The fetch-joined queries described in Section 6.5 matter here too: an endpoint issuing one query rather than N postpones the point at which the connection pool becomes the bottleneck, which is why that optimisation is a scaling measure and not only a latency measure.'),
+
+  sub('7.8 What is currently deployed'),
   p('The architecture above is the target design. The system as delivered is deployed to Render using the render.yaml descriptor in the repository, with a managed PostgreSQL instance and an external Kafka provider. Render was chosen during development because it removes VPC, subnet and security group configuration entirely, which shortened the deployment feedback loop at a stage when the application itself was changing daily.'),
   p('The components map onto one another directly: Render web services correspond to the EC2 or ECS tier, Render’s managed PostgreSQL to RDS, and the external Kafka provider to MSK. What the Render deployment does not provide is the network isolation described in Section 7.1, the security group chain of Section 7.4, or Multi-AZ database failover. Those are the specific reasons the AWS design above is the target rather than the current state, and migrating to it is listed as future work in Section 9.'),
   pageBreak(),
@@ -760,11 +777,16 @@ body.push(
   p('Docker packages an application with its dependencies into an image that runs identically wherever a container runtime exists. All three services build multi-stage images: a build stage compiles with Maven, and a runtime stage copies only the resulting artifact onto a slim JRE base, keeping images small and excluding build tooling from the deployed surface. Containers run as a non-root user.'),
   p('Containerisation is close to universal in modern deployment and is the packaging format underlying Kubernetes, ECS and most managed platforms — including Render, where this project is currently deployed.'),
 
-  sub('8.8 Testing: JUnit 5, Mockito and JaCoCo'),
+  sub('8.8 Observability: structured logging, Micrometer, Prometheus and Grafana'),
+  p('Logback is configured to emit JSON rather than plain lines, so every log event is a structured record that a collector can index by field instead of by regular expression. Requests carry a correlation identifier through the SLF4J mapped diagnostic context, which means the log lines belonging to one request can be retrieved together even when several are interleaved — and because an unhandled exception returns that identifier to the client and nothing else, a user reporting a failure supplies exactly the key an operator needs.'),
+  p('Micrometer instruments the application and exposes a Prometheus scrape endpoint through Spring Boot Actuator. The counter on tailoring requests is the metric that matters most operationally: compared against the count of records reaching COMPLETED it gives the pipeline success rate, and a divergence between the two is the signal that the model endpoint is degrading. Prometheus scrapes the services and Grafana provisions its datasource and dashboards from files in the repository, so a monitoring stack comes up with the dashboard already present rather than requiring manual configuration.'),
+  p('This area is where a defect was found late. The worker service exposed only its health endpoint, so the Prometheus scrape returned 404 for it and three of the four dashboard panels could never populate — the dashboard looked correct while displaying nothing. Monitoring that is never checked against a real signal will fail silently, and the only reliable defence is to verify the scrape target rather than the dashboard definition.'),
+
+  sub('8.9 Testing: JUnit 5, Mockito and JaCoCo'),
   p('JUnit 5 provides the test framework, Mockito supplies the test doubles, Spring Boot Test provides context and MockMvc support for driving the HTTP layer without a running server, and JaCoCo measures coverage by instrumenting bytecode during the test run. The choice to measure coverage rather than estimate it is deliberate: an earlier revision of this project documentation asserted a coverage figure that had never been measured and was wrong by an order of magnitude.'),
   p('The suite comprises 94 tests, all passing, and is verified reproducibly — the committed tree is exported with git archive into a clean directory and built there, so the result reflects the repository rather than a developer machine.'),
 
-  tableCaption('8.02', 'Automated test suites'),
+  tableCaption('8.03', 'Automated test suites'),
   table(
     ['Suite', 'Tests', 'What it verifies'],
     [
@@ -780,6 +802,11 @@ body.push(
   ),
   spacerAfterTable(),
 
+  sub3('Testing strategy'),
+  p('The suite is shaped as a pyramid. The widest layer is fast unit tests with no Spring context at all — the scoring and keyword components, and ResumeServiceTest, which exercises the service against mocked collaborators and runs in milliseconds. Above that sit slice tests: AuthServiceTest uses @DataJpaTest, which starts the persistence layer against an in-memory database but not the web tier. At the top, and deliberately the smallest layer, are full-context tests: BOLATest and RateLimitFilterTest start the whole application and drive it over HTTP through MockMvc, because the properties they verify — that a filter chain refuses a cross-tenant request, that a rate limiter returns 429 — are properties of the assembled system and cannot be observed in a unit test.'),
+  p('The shape matters for feedback speed. The unit layer runs in under a second and catches most logic errors; the full-context tests take seconds each and are reserved for behaviour that only emerges once the components are wired together. Writing an authorisation test as a unit test would prove that a method throws, not that the endpoint refuses the request, which is the property that actually protects a user.'),
+  p('Two things are deliberately not covered. There is no end-to-end test spanning Kafka and the worker, because it would require a broker, a database and a model endpoint, and would be slow and non-deterministic — the correct tool is Testcontainers, which is recorded as future work. And there is no test that exercises the Flyway migration chain, since the test profile builds its schema from the entity mapping instead; the migrations are consequently verified only at application startup, which Section 9.3 records as a limitation.'),
+
   sub3('Test doubles and why the distinction matters'),
   p('A test double is any object substituted for a real collaborator. The suite uses three kinds, and they are not interchangeable:'),
   li('Stub — an object configured to return prepared answers, supplying the state a scenario needs. The repositories are stubbed with when(...).thenReturn(...) so a test can describe a resume that exists and is owned by a particular user, without a database.'),
@@ -787,7 +814,7 @@ body.push(
   li('Fake — a real but simplified implementation. SimpleMeterRegistry is used in place of the production MeterRegistry because ResumeService constructs a Counter from it; a mock would return null and the constructor would fail. A fake is the correct double whenever the collaborator has behaviour the subject genuinely depends on.'),
   p('The distinction has practical consequences. A suite that only stubs can confirm what a method returns but not what it did, so a service that silently skipped publishing its event would still pass. Verifying the interaction is what turns the test into a specification of behaviour.'),
 
-  tableCaption('8.03', 'Technology selection and rationale'),
+  tableCaption('8.04', 'Technology selection and rationale'),
   table(
     ['Technology', 'Role in the system', 'Primary reason for selection'],
     [

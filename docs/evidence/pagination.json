@@ -1,23 +1,16 @@
 {
-  "totalPages": 49,
+  "total": 50,
   "chapters": {
-    "Certification": 2,
-    "DECLARATION": 3,
-    "ACKNOWLEDGMENT": 4,
-    "Table of Contents": 5,
-    "List of Tables": 5,
-    "List of Figures": 5,
-    "Applied Software Project": 5,
-    "Abstract": 5,
-    "Project Description": 5,
-    "Requirement Gathering": 5,
-    "Class Diagrams": 5,
-    "Database Schema Design": 5,
-    "Feature Development Process": 5,
-    "Deployment Flow": 5,
-    "Technologies Used": 5,
-    "Conclusion": 5,
-    "References": 5
+    "Abstract": 8,
+    "Project Description": 10,
+    "Requirement Gathering": 13,
+    "Class Diagrams": 19,
+    "Database Schema Design": 23,
+    "Feature Development Process": 28,
+    "Deployment Flow": 33,
+    "Technologies Used": 37,
+    "Conclusion": 45,
+    "References": 49
   },
   "tables": {
     "3.01": 13,
@@ -31,7 +24,7 @@
     "6.01": 31,
     "8.01": 41,
     "8.02": 43,
-    "9.01": 45
+    "9.01": 46
   },
   "figures": {
     "2.01": 11,

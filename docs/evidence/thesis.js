@@ -285,8 +285,8 @@ front.push(
   tocLine('Feature Development Process', 28, 300),
   tocLine('Deployment Flow', 33, 300),
   tocLine('Technologies Used', 37, 300),
-  tocLine('Conclusion', 44, 300),
-  tocLine('References', 47, 300),
+  tocLine('Conclusion', 45, 300),
+  tocLine('References', 49, 300),
   pageBreak(),
 );
 
@@ -309,7 +309,7 @@ front.push(
       ['6.01', 'N+1 optimisation benchmark results', '31'],
       ['8.01', 'Automated test suites', '41'],
       ['8.02', 'Technology selection and rationale', '43'],
-      ['9.01', 'Known limitations of the delivered system', '45'],
+      ['9.01', 'Known limitations of the delivered system', '46'],
     ],
     [1.2, 5, 1.2],
   ),

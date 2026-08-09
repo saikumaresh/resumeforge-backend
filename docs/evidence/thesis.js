@@ -80,9 +80,13 @@ const li = (text, level = 0) => new Paragraph({
   children: [t(text)],
 });
 
-/** Numbered item. */
-const ni = (text, level = 0) => new Paragraph({
-  numbering: { reference: 'num', level },
+/**
+ * Numbered item. `instance` starts a fresh counter: without it every numbered
+ * list in the document shares one sequence, which had the reference list
+ * beginning at 13 because the objectives and suggestions lists came first.
+ */
+const ni = (text, level = 0, instance = 0) => new Paragraph({
+  numbering: { reference: 'num', level, instance },
   alignment: AlignmentType.JUSTIFIED,
   spacing: { line: LINE1, after: 70 },
   children: [t(text)],
@@ -935,18 +939,18 @@ body.push(
   p('The AWS design in Section 7 is materially more expensive than the current deployment. Multi-AZ RDS approximately doubles database cost against a single instance; MSK carries a per-broker charge with a three-broker minimum for production; and NAT gateways are charged hourly plus per gigabyte processed. For a system at this stage the managed-platform deployment is the economically correct choice, and the AWS design becomes justified when the availability and isolation guarantees are worth their cost. Language model inference is the other significant variable cost, and it is the reason the input size caps described in Section 6 exist.'),
 
   sub3('Suggestions for improvement'),
-  ni('Extract the scoring logic into a shared module so one tested implementation runs in production.'),
-  ni('Introduce a transactional outbox so event publication cannot diverge from the database commit.'),
-  ni('Add a test suite for the worker service, which contains the tailoring pipeline and is currently untested.'),
-  ni('Execute the Flyway chain against PostgreSQL in tests using Testcontainers.'),
-  ni('Provision object storage and complete the PDF export feature.'),
-  ni('Move the rate limiter’s window into Redis so limits hold across instances, and key it on a trusted proxy header.'),
+  ni('Extract the scoring logic into a shared module so one tested implementation runs in production.', 0, 1),
+  ni('Introduce a transactional outbox so event publication cannot diverge from the database commit.', 0, 1),
+  ni('Add a test suite for the worker service, which contains the tailoring pipeline and is currently untested.', 0, 1),
+  ni('Execute the Flyway chain against PostgreSQL in tests using Testcontainers.', 0, 1),
+  ni('Provision object storage and complete the PDF export feature.', 0, 1),
+  ni('Move the rate limiter’s window into Redis so limits hold across instances, and key it on a trusted proxy header.', 0, 1),
   pageBreak(),
 );
 
 /* ── 10. References ───────────────────────────────────────────── */
 const ref = (text) => new Paragraph({
-  numbering: { reference: 'num', level: 0 },
+  numbering: { reference: 'num', level: 0, instance: 2 },
   alignment: AlignmentType.LEFT,
   spacing: { line: LINE1, after: 110 },
   children: [t(text)],

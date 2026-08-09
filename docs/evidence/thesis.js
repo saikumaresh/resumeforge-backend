@@ -10,6 +10,7 @@ const {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, PageBreak,
   Table, TableRow, TableCell, WidthType, ShadingType, LevelFormat, ImageRun,
   TableOfContents, Footer, PageNumber, BorderStyle,
+  PositionalTab, PositionalTabAlignment, PositionalTabLeader,
 } = require('docx');
 const fs = require('fs');
 const path = require('path');
@@ -91,6 +92,27 @@ const blank = (n = 1) => Array.from({ length: n }, () =>
   new Paragraph({ spacing: { after: 0, line: LINE15 }, children: [t('')] }));
 
 const pageBreak = () => new Paragraph({ children: [new PageBreak()] });
+
+
+/** One Table-of-Contents line: title, dot leader, right-aligned page number. */
+const tocLine = (title, page, indent = 0) => new Paragraph({
+  spacing: { after: 90, line: LINE1 },
+  indent: { left: indent },
+  children: [
+    t(title),
+    new TextRun({
+      font: SERIF, size: BODY, color: '000000',
+      children: [
+        new PositionalTab({
+          alignment: PositionalTabAlignment.RIGHT,
+          relativeTo: 'margin',
+          leader: PositionalTabLeader.DOT,
+        }),
+        String(page),
+      ],
+    }),
+  ],
+});
 
 /* ── figures ───────────────────────────────────────────────────── */
 function pngSize(file) {
@@ -242,9 +264,25 @@ front.push(
 );
 
 /* Table of contents */
+/* Page numbers below are read from the rendered PDF rather than left to a
+   TOC field, because a Word field renders blank in Google Docs until it is
+   explicitly refreshed. Static text renders identically everywhere. */
 front.push(
   chapter('Table of Contents'),
-  new TableOfContents('Contents', { hyperlink: true, headingStyleRange: '1-2' }),
+  ...blank(1),
+  tocLine('List of Tables', 6),
+  tocLine('List of Figures', 7),
+  tocLine('Applied Software Project', 8),
+  tocLine('Abstract', 8, 300),
+  tocLine('Project Description', 10, 300),
+  tocLine('Requirement Gathering', 13, 300),
+  tocLine('Class Diagrams', 19, 300),
+  tocLine('Database Schema Design', 23, 300),
+  tocLine('Feature Development Process', 28, 300),
+  tocLine('Deployment Flow', 33, 300),
+  tocLine('Technologies Used', 37, 300),
+  tocLine('Conclusion', 44, 300),
+  tocLine('References', 48, 300),
   pageBreak(),
 );
 
@@ -256,18 +294,18 @@ front.push(
   table(
     ['Table No.', 'Title', 'Page No.'],
     [
-      ['3.01', 'Functional requirements', ''],
-      ['3.02', 'Non-functional requirements', ''],
-      ['3.03', 'Feature set', ''],
-      ['3.04', 'REST API surface', ''],
-      ['4.01', 'Design patterns used in the low-level design', ''],
-      ['5.01', 'Database tables and their purpose', ''],
-      ['5.02', 'Foreign key constraints', ''],
-      ['5.03', 'Cardinality of relations', ''],
-      ['6.01', 'N+1 optimisation benchmark results', ''],
-      ['8.03', 'Automated test suites', ''],
-      ['8.04', 'Technology selection and rationale', ''],
-      ['9.01', 'Known limitations of the delivered system', ''],
+      ['3.01', 'Functional requirements', '13'],
+      ['3.02', 'Non-functional requirements', '13'],
+      ['3.03', 'Feature set', '16'],
+      ['3.04', 'REST API surface', '17'],
+      ['4.01', 'Design patterns used in the low-level design', '21'],
+      ['5.01', 'Database tables and their purpose', '24'],
+      ['5.02', 'Foreign key constraints', '24'],
+      ['5.03', 'Cardinality of relations', '25'],
+      ['6.01', 'N+1 optimisation benchmark results', '31'],
+      ['8.01', 'Automated test suites', '41'],
+      ['8.02', 'Technology selection and rationale', '43'],
+      ['9.01', 'Known limitations of the delivered system', '45'],
     ],
     [1.2, 5, 1.2],
   ),
@@ -282,15 +320,15 @@ front.push(
   table(
     ['Figure No.', 'Title', 'Page No.'],
     [
-      ['2.01', 'ResumeForge system architecture', ''],
-      ['2.02', 'Tailoring job state lifecycle', ''],
-      ['3.01', 'Use case diagram', ''],
-      ['4.01', 'Domain model class diagram', ''],
-      ['4.02', 'Layered class diagram of the request path', ''],
-      ['5.01', 'Entity relationship diagram', ''],
-      ['6.01', 'Sequence diagram for the tailoring request', ''],
-      ['6.02', 'N+1 optimisation: queries and latency, before and after', ''],
-      ['7.01', 'Target AWS deployment architecture', ''],
+      ['2.01', 'ResumeForge system architecture', '11'],
+      ['2.02', 'Tailoring job state lifecycle', '12'],
+      ['3.01', 'Use case diagram', '15'],
+      ['4.01', 'Domain model class diagram', '19'],
+      ['4.02', 'Layered class diagram of the request path', '20'],
+      ['5.01', 'Entity relationship diagram', '26'],
+      ['6.01', 'Sequence diagram for the tailoring request', '29'],
+      ['6.02', 'N+1 optimisation: queries and latency, before and after', '31'],
+      ['7.01', 'Target AWS deployment architecture', '33'],
     ],
     [1.2, 5, 1.2],
   ),
@@ -803,7 +841,7 @@ body.push(
   p('JUnit 5 provides the test framework, Mockito supplies the test doubles, Spring Boot Test provides context and MockMvc support for driving the HTTP layer without a running server, and JaCoCo measures coverage by instrumenting bytecode during the test run. The choice to measure coverage rather than estimate it is deliberate: an earlier revision of this project documentation asserted a coverage figure that had never been measured and was wrong by an order of magnitude.'),
   p('The suite comprises 94 tests, all passing, and is verified reproducibly — the committed tree is exported with git archive into a clean directory and built there, so the result reflects the repository rather than a developer machine.'),
 
-  tableCaption('8.03', 'Automated test suites'),
+  tableCaption('8.01', 'Automated test suites'),
   table(
     ['Suite', 'Tests', 'What it verifies'],
     [
@@ -831,7 +869,7 @@ body.push(
   li('Fake — a real but simplified implementation. SimpleMeterRegistry is used in place of the production MeterRegistry because ResumeService constructs a Counter from it; a mock would return null and the constructor would fail. A fake is the correct double whenever the collaborator has behaviour the subject genuinely depends on.'),
   p('The distinction has practical consequences. A suite that only stubs can confirm what a method returns but not what it did, so a service that silently skipped publishing its event would still pass. Verifying the interaction is what turns the test into a specification of behaviour.'),
 
-  tableCaption('8.04', 'Technology selection and rationale'),
+  tableCaption('8.02', 'Technology selection and rationale'),
   table(
     ['Technology', 'Role in the system', 'Primary reason for selection'],
     [

@@ -10,7 +10,7 @@ const {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, PageBreak,
   Table, TableRow, TableCell, WidthType, ShadingType, LevelFormat, ImageRun,
   TableOfContents, Footer, PageNumber, BorderStyle,
-  PositionalTab, PositionalTabAlignment, PositionalTabLeader,
+  TabStopType, TabStopPosition, LeaderType, Tab,
 } = require('docx');
 const fs = require('fs');
 const path = require('path');
@@ -94,25 +94,25 @@ const blank = (n = 1) => Array.from({ length: n }, () =>
 const pageBreak = () => new Paragraph({ children: [new PageBreak()] });
 
 
-/** One Table-of-Contents line: title, dot leader, right-aligned page number. */
+/**
+ * One Table-of-Contents line: title, dot leader, right-aligned page number.
+ *
+ * Uses a conventional right tab stop with a dot leader rather than a
+ * PositionalTab. PositionalTab (w:ptab) is a later OOXML addition that Google
+ * Docs does not honour — it rendered the page number hard against the title
+ * with no leader — whereas a w:tabs right stop is core Word behaviour and is
+ * supported everywhere.
+ */
 const tocLine = (title, page, indent = 0) => new Paragraph({
   spacing: { after: 90, line: LINE1 },
   indent: { left: indent },
-  children: [
-    t(title),
-    new TextRun({
-      font: SERIF, size: BODY, color: '000000',
-      children: [
-        new PositionalTab({
-          alignment: PositionalTabAlignment.RIGHT,
-          relativeTo: 'margin',
-          leader: PositionalTabLeader.DOT,
-        }),
-        String(page),
-      ],
-    }),
-  ],
+  tabStops: [{ type: TabStopType.RIGHT, position: TW, leader: LeaderType.DOT }],
+  children: [t(title), new TextRun({ font: SERIF, size: BODY, color: '000000',
+    children: [new Tab(), String(page)] })],
 });
+
+/* Usable text width: A4 (11906 twips) minus 1.25in margins each side (3600) = 8306. */
+const TW = 8300;
 
 /* ── figures ───────────────────────────────────────────────────── */
 function pngSize(file) {
@@ -160,7 +160,6 @@ function logo(fileBase, ext, widthIn, heightIn, afterSpacing) {
 }
 
 /* ── tables ────────────────────────────────────────────────────── */
-const TW = 8700; // twips; ≈5.7in usable width
 
 /** Table caption above (template: "Table captions go above tables"). */
 const tableCaption = (num, caption) => new Paragraph({
@@ -481,7 +480,7 @@ body.push(
   p('The functional requirements resolve to fourteen endpoints across two controllers. All are versioned under /api/v1 and all except the authentication routes require a bearer token.'),
   tableCaption('3.04', 'REST API surface'),
   table(
-    ['Method', 'Path', 'Success', 'Requirement'],
+    ['Method', 'Path', 'Success', 'Req. ID'],
     [
       ['POST', '/api/v1/auth/register', '201', 'FR-01'],
       ['POST', '/api/v1/auth/login', '200', 'FR-02'],
@@ -498,7 +497,7 @@ body.push(
       ['POST', '/api/v1/resumes/tailored/{id}/chat', '200', 'FR-12'],
       ['POST', '/api/v1/resumes/tailored/{id}/retry', '202', 'FR-13'],
     ],
-    [1.2, 5.5, 1.4, 1.3],
+    [1.1, 5.2, 1.3, 1.5],
   ),
   spacerAfterTable(),
   p('The two operations that return 202 Accepted are the asynchronous ones. The status code is chosen deliberately: 200 would imply the work was performed, and 201 would imply a completed resource. 202 states accurately that the request has been accepted and durably recorded but not yet carried out.'),

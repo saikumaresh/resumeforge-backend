@@ -133,11 +133,11 @@ Asynchronous operations return **202 Accepted** with a `PENDING` record; poll th
 ## Testing
 
 ```bash
-mvn test                                  # 94 tests
+mvn test                                  # 133 tests
 mvn test && open resume-service/target/site/jacoco/index.html   # coverage
 ```
 
-**Current state — 94 tests, 0 failures, 0 errors:**
+**Current state — 133 tests, 0 failures, 0 errors:**
 
 | Suite | Tests | Covers |
 |-------|-------|--------|
@@ -147,8 +147,11 @@ mvn test && open resume-service/target/site/jacoco/index.html   # coverage
 | `RateLimitFilterTest` | 7 | Sliding-window limits, per-IP isolation, 429 |
 | `ATSScorerTest` + edge cases | 21 | Scoring maths and boundary conditions |
 | `KeywordExtractorTest` + edge cases | 24 | Tokenisation, stop-words, extraction |
+| `ATSScorerTest` (worker) | 18 | The scorer that actually runs in production |
+| `TailoringGuardrailValidatorTest` | 14 | LLM output validation and rejection paths |
+| `IdempotencyServiceTest` | 7 | Redis-backed duplicate suppression |
 
-**Measured coverage (JaCoCo):** `resume-service` 64.6% line / 64.6% instruction. `worker-service` and `api-gateway` have no test suite — see below.
+**Measured coverage (JaCoCo):** `resume-service` 64.6% line, `worker-service` 28.6% line, 53.1% across the two. `api-gateway` has no test suite.
 
 ---
 
@@ -157,7 +160,7 @@ mvn test && open resume-service/target/site/jacoco/index.html   # coverage
 Stated explicitly rather than left for a reader to discover:
 
 - **PDF export is implemented but not wired.** `ResumePDFGenerator` works, but `TailoringConsumer` sets `pdfPath = null` because no object storage is configured, so `pdfDownloadUrl` is absent from responses.
-- **Test coverage is uneven.** The ATS scorer that runs in production lives in `worker-service` and is untested; the tested copy in `resume-service` is not called by any production path. These two copies have already diverged.
+- **Scoring logic is duplicated.** `ATSScorer` exists in both services and the copies have diverged. The production copy in `worker-service` is now tested; the `resume-service` copy is dead code and should be removed once the logic is extracted into a shared module.
 - **Kafka publish happens inside the database transaction** — a dual-write with no outbox, so a broker failure after commit loses the event. `retryTailoring` is the manual recovery path.
 - **Kubernetes manifests are illustrative.** No manifests exist for PostgreSQL, Kafka or Redis, and no images are published to a registry.
 

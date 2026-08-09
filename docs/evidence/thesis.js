@@ -102,7 +102,7 @@ const pageBreak = () => new Paragraph({ children: [new PageBreak()] });
 /**
  * One Table-of-Contents line: title, dot leader, right-aligned page number.
  *
- * Uses a conventional right tab stop with a dot leader rather than a
+ * Uses a conventional right tab stop with a dot leader instead of a
  * PositionalTab. PositionalTab (w:ptab) is a later OOXML addition that Google
  * Docs does not honour — it rendered the page number hard against the title
  * with no leader — whereas a w:tabs right stop is core Word behaviour and is
@@ -349,10 +349,10 @@ body.push(chapter('Applied Software Project'), ...blank(1));
 /* ── 1. Abstract ──────────────────────────────────────────────── */
 body.push(
   chapter('Abstract'),
-  p('ResumeForge is an event-driven backend system that adapts a candidate’s master resume to a specific job description using a large language model, and then scores the adapted document for the keyword coverage that applicant tracking systems measure. The problem it addresses is a practical one: most job applications are filtered by software before a person reads them, and that software matches on vocabulary rather than on substance, so a well-qualified candidate is routinely rejected for using different words from the posting.'),
+  p('ResumeForge is an event-driven backend system that adapts a candidate’s master resume to a specific job description using a large language model, and then scores the adapted document for the keyword coverage that applicant tracking systems measure. The problem it addresses is a practical one: most job applications are filtered by software before a person reads them, and that software matches on vocabulary instead of on substance, so a well-qualified candidate is routinely rejected for using different words from the posting.'),
   p('The system is built as three Spring Boot services on Java 21. Because language model inference takes tens of seconds and fails unpredictably, the tailoring workload is deliberately separated from the HTTP request cycle. The API validates and authorises a request, persists a record in a PENDING state, publishes an event to Apache Kafka and returns 202 Accepted immediately. A worker service consumes that event, invokes the model, validates the returned content against a schema, computes the score deterministically in code, and writes the result back. Persistence is PostgreSQL with Flyway-managed migrations; Redis provides consumer idempotency so that Kafka’s at-least-once delivery cannot cause a duplicate model invocation.'),
   p('The results are a working system of fourteen REST endpoints with stateless JWT authentication and object-level authorisation enforced at the service layer, verified by an automated cross-tenant test suite. The project carries 94 automated tests with JaCoCo-measured coverage of 64.6% of lines on the primary service. A measured optimisation of the resume listing path reduced the query count from 31 to 1 and median latency from 3.487 ms to 1.126 ms.'),
-  p('The wider applicability is that the pattern demonstrated here — treating a slow, non-deterministic external model as an unreliable asynchronous dependency behind a durable queue, with schema validation on its output — generalises to any system integrating generative AI into a transactional application, which is now a common requirement across recruitment technology, document processing, customer support and healthcare administration.'),
+  p('The wider applicability is that the pattern demonstrated here (treating a slow, non-deterministic external model as an unreliable asynchronous dependency behind a durable queue, with schema validation on its output) generalises to any system integrating generative AI into a transactional application, which is now a common requirement across recruitment technology, document processing, customer support and healthcare administration.'),
   pageBreak(),
 );
 
@@ -366,15 +366,15 @@ body.push(
   ni('Accept a job description and produce a tailored variant of the master resume against it, using a large language model to perform the rewriting.'),
   ni('Compute a deterministic ATS score for the tailored output, broken down by component so the candidate can see which dimension is weak.'),
   ni('Keep the API responsive regardless of how long the model takes, so that model latency and model failure are never visible to the caller as request latency or request failure.'),
-  ni('Guarantee that a candidate can access only their own data, and prove that guarantee with automated tests rather than asserting it.'),
+  ni('Guarantee that a candidate can access only their own data, and prove that guarantee with automated tests instead of asserting it.'),
   ni('Allow manual editing of the tailored output and conversational revision through the model, and allow a failed job to be retried.'),
 
   sub('2.2 Relevance'),
   p('Applicant tracking systems are used by the large majority of medium and large employers to screen applications before human review. These systems parse an uploaded document and rank it against the posting, and the ranking is driven substantially by term overlap. The practical consequence is that a candidate must restate the same experience in the vocabulary of each posting. Done manually this is slow, repetitive, and easy to do badly, because the candidate is guessing at which terms the filter weights.'),
-  p('Automating the rewrite addresses the labour, and scoring the result addresses the guesswork. Because the score is computed in code from an explicit formula rather than asked of the model, it is reproducible and explainable — a candidate can be told that their keyword coverage is weak while their section completeness is fine, and can act on that.'),
+  p('Automating the rewrite addresses the labour, and scoring the result addresses the guesswork. Because the score is computed in code from an explicit formula rather than asked of the model, it is reproducible and explainable. A candidate can be told that their keyword coverage is weak while their section completeness is fine, and can act on that.'),
 
   sub('2.3 System architecture'),
-  p('The system is organised as three services within a single Maven reactor. The division follows the runtime characteristics of the work rather than a domain boundary: one service handles fast, synchronous, transactional HTTP traffic, and a second handles slow, retryable work against an unreliable external dependency.'),
+  p('The system is organised as three services within a single Maven reactor. The division follows the runtime characteristics of the work instead of a domain boundary: one service handles fast, synchronous, transactional HTTP traffic, and a second handles slow, retryable work against an unreliable external dependency.'),
   ...figure('fig_2_01_architecture', '2.01', 'ResumeForge system architecture'),
   p('The resume service owns the database and all write paths. It authenticates the caller, authorises the operation against resource ownership, persists state, and publishes events. The worker service owns the integration with the language model; it consumes events, calls the model, validates what comes back, computes scores and writes results. The API gateway is a Spring Cloud Gateway instance which proxies the resume routes; as Section 9 records honestly, it is not currently on the primary request path.'),
 
@@ -384,14 +384,14 @@ body.push(
   sub('2.5 Tailoring job lifecycle'),
   p('Because tailoring is asynchronous, a tailored resume is a stateful record rather than a synchronous return value. Its state machine is small and is the contract between the API and its clients.'),
   ...figure('fig_2_02_lifecycle', '2.02', 'Tailoring job state lifecycle'),
-  p('A record is created in PENDING at the moment the request is accepted. The worker moves it to PROCESSING when it begins, and to COMPLETED once the model output has passed validation and the score has been written. If the model call fails or returns content that cannot be validated, the record moves to FAILED rather than remaining PENDING indefinitely — the distinction matters because a client polling the record must be able to tell "still working" from "did not succeed". A FAILED record can be resubmitted through the retry endpoint, which resets it to PENDING and republishes the event. Retry deliberately rejects records in any other state so that a completed result cannot be silently overwritten.'),
+  p('A record is created in PENDING at the moment the request is accepted. The worker moves it to PROCESSING when it begins, and to COMPLETED once the model output has passed validation and the score has been written. If the model call fails or returns content that cannot be validated, the record moves to FAILED instead of remaining PENDING indefinitely. The distinction matters because a client polling the record must be able to tell "still working" from "did not succeed". A FAILED record can be resubmitted through the retry endpoint, which resets it to PENDING and republishes the event. Retry deliberately rejects records in any other state so that a completed result cannot be silently overwritten.'),
   pageBreak(),
 );
 
 /* ── 3. Requirement Gathering ─────────────────────────────────── */
 body.push(
   chapter('Requirement Gathering'),
-  p('The requirements below were derived from the problem statement in Section 2 and refined during development as constraints emerged — in particular the discovery that model latency made a synchronous design untenable, which turned an implementation detail into the non-functional requirement NFR-01.'),
+  p('The requirements below were derived from the problem statement in Section 2 and refined during development as constraints emerged, in particular the discovery that model latency made a synchronous design untenable, which turned an implementation detail into the non-functional requirement NFR-01.'),
 
   sub('3.1 Functional requirements'),
   tableCaption('3.01', 'Functional requirements'),
@@ -423,11 +423,11 @@ body.push(
     ['ID', 'Category', 'Requirement'],
     [
       ['NFR-01', 'Responsiveness', 'The API must return within normal web latency regardless of model response time. Tailoring must therefore be asynchronous.'],
-      ['NFR-02', 'Durability', 'An accepted tailoring request must survive a worker crash and be reprocessed rather than lost.'],
+      ['NFR-02', 'Durability', 'An accepted tailoring request must survive a worker crash and be reprocessed instead of lost.'],
       ['NFR-03', 'Idempotency', 'Redelivery of the same event must not cause a second model invocation or a duplicated result.'],
-      ['NFR-04', 'Security — authentication', 'All resource endpoints require a validly signed token. Unsigned and tampered tokens are rejected.'],
-      ['NFR-05', 'Security — authorisation', 'Every data-touching operation verifies resource ownership against the authenticated principal.'],
-      ['NFR-06', 'Security — credentials', 'Passwords are stored only as BCrypt hashes. No credential is committed to the repository.'],
+      ['NFR-04', 'Security, authentication', 'All resource endpoints require a validly signed token. Unsigned and tampered tokens are rejected.'],
+      ['NFR-05', 'Security, authorisation', 'Every data-touching operation verifies resource ownership against the authenticated principal.'],
+      ['NFR-06', 'Security, credentials', 'Passwords are stored only as BCrypt hashes. No credential is committed to the repository.'],
       ['NFR-07', 'Abuse resistance', 'Authentication endpoints are rate limited to blunt brute-force and automated registration.'],
       ['NFR-08', 'Data integrity', 'The schema is owned by versioned migrations and validated at startup; concurrent edits are detected.'],
       ['NFR-09', 'Observability', 'Requests are traceable through structured logs with correlation identifiers, and key operations are counted.'],
@@ -448,10 +448,10 @@ body.push(
   p('Actor: Job Seeker. Precondition: none. Main flow: the visitor submits a name, email address and password; the system normalises the email, rejects it if already registered, hashes the password with BCrypt, persists the account and returns a signed token with 201 Created. Alternative flow: an email already in use is refused with 409 Conflict, and the response deliberately does not reveal whether the existing account belongs to the requester. Exception flow: more than five registration attempts from one client within a minute are refused with 429, which is what makes automated account creation impractical.'),
 
   sub3('Use case: Maintain the master resume'),
-  p('Actor: Job Seeker. Precondition: authenticated. Main flow: the user submits resume content; the system verifies that the target user identifier matches the authenticated principal, replaces the stored sections and returns the saved representation. Alternative flow: where no resume exists one is created, so the caller does not need to distinguish create from update. Exception flow: a request naming another user is refused with 403 before any write; a section beyond the length limit is refused with 400. This path is guarded by optimistic locking, so a save against a stale version fails rather than overwriting a concurrent edit.'),
+  p('Actor: Job Seeker. Precondition: authenticated. Main flow: the user submits resume content; the system verifies that the target user identifier matches the authenticated principal, replaces the stored sections and returns the saved representation. Alternative flow: where no resume exists one is created, so the caller does not need to distinguish create from update. Exception flow: a request naming another user is refused with 403 before any write; a section beyond the length limit is refused with 400. This path is guarded by optimistic locking, so a save against a stale version fails instead of overwriting a concurrent edit.'),
 
   sub3('Use case: Review and revise a tailored resume'),
-  p('Actor: Job Seeker. Precondition: a tailored resume in COMPLETED state. Main flow: the user retrieves the tailored resume with its ATS score breakdown, edits individual sections directly, or asks the model for a revision through the chat endpoint. Exception flow: every one of these operations authorises on the resume identifier, so a user supplying an identifier they do not own receives 403 — including the chat endpoint, which is discussed in Section 4.2 because it was the one place this check was originally missing.'),
+  p('Actor: Job Seeker. Precondition: a tailored resume in COMPLETED state. Main flow: the user retrieves the tailored resume with its ATS score breakdown, edits individual sections directly, or asks the model for a revision through the chat endpoint. Exception flow: every one of these operations authorises on the resume identifier, so a user supplying an identifier they do not own receives 403, including the chat endpoint, which is discussed in Section 4.2 because it was the one place this check was originally missing.'),
 
   sub3('Use case: Recover a failed tailoring job'),
   p('Actor: Job Seeker, with Worker Service participating. Precondition: a tailored resume in FAILED state. Main flow: the user invokes the retry endpoint; the system resets the record to PENDING and republishes the event, and the worker processes it as it would a new request. Exception flow: a record in any state other than FAILED is refused, so a completed result cannot be destroyed by an accidental retry. This use case exists because the system integrates an external dependency that fails: without it, a transient model outage would permanently strand the request.'),
@@ -474,7 +474,7 @@ body.push(
       ['Retry of failed jobs', 'Resubmission of FAILED records only', 'Delivered'],
       ['Object-level authorisation', 'Ownership check on every data-touching operation', 'Delivered'],
       ['Rate limiting', 'Sliding window on login and registration', 'Delivered'],
-      ['PDF export', 'Document generation implemented but not wired — no object storage provisioned', 'Partial'],
+      ['PDF export', 'Document generation implemented but not wired, no object storage provisioned', 'Partial'],
       ['API gateway routing', 'Route present for resume paths; authentication route absent', 'Partial'],
     ],
     [2.2, 6, 1.2],
@@ -517,8 +517,8 @@ body.push(
   sub('4.1 Domain model'),
   p('Seven JPA entities model the domain. The central relationship is that a master resume is the source document, a job description is the target, and a tailored resume is the product of the two, carrying its own sections and exactly one score result.'),
   ...figure('fig_4_01_domain', '4.01', 'Domain model class diagram'),
-  p('Two design decisions in this model are worth drawing out. First, MasterResume carries a version field mapped with @Version, which enables optimistic locking; a resume can be edited by the user while simultaneously being read by a tailoring job, and a write against a stale version fails rather than silently discarding a concurrent edit. Second, both section collections are composition rather than association — a section has no meaning independent of its parent resume, is created and deleted with it, and is therefore mapped with cascade and orphan removal.'),
-  p('The relationship between TailoredResume and ATSScoreResult is one-to-one because a score describes exactly one tailored document and has no independent identity. Modelling it as a separate entity rather than as columns on the tailored resume keeps the scoring concern separable, so a future change to the scoring algorithm can add columns without widening the primary table.'),
+  p('Two design decisions in this model are worth drawing out. First, MasterResume carries a version field mapped with @Version, which enables optimistic locking; a resume can be edited by the user while simultaneously being read by a tailoring job, and a write against a stale version fails rather than silently discarding a concurrent edit. Second, both section collections are composition rather than association. A section has no meaning independent of its parent resume, is created and deleted with it, and is therefore mapped with cascade and orphan removal.'),
+  p('The relationship between TailoredResume and ATSScoreResult is one-to-one because a score describes exactly one tailored document and has no independent identity. Modelling it as a separate entity instead of as columns on the tailored resume keeps the scoring concern separable, so a future change to the scoring algorithm can add columns without widening the primary table.'),
 
   sub('4.2 Request path'),
   p('The layered view below shows the classes that participate in a request. Each layer has one responsibility and the dependencies point in one direction.'),
@@ -526,17 +526,17 @@ body.push(
   p('The controller deals only with HTTP: routing, deserialisation, bean validation and status code selection. It contains no business logic and no authorisation decision. The service holds the business rules, the transaction boundary and the ownership check. The repository is a Spring Data interface whose custom queries are JPQL with bound parameters.'),
 
   sub3('Why authorisation lives in the service layer'),
-  p('The placement of assertOwnership in the service rather than in a filter or a controller is a deliberate design decision and the most important one in this diagram. A servlet filter can only inspect the URL and the token; it cannot determine whether the opaque UUID in the path belongs to the caller without loading the resource, which is the service’s job. Placing the check in the controller would work, but it would mean that any future caller of the same service method — a scheduled task, a second controller, a message handler — would bypass it silently. Enforcing it at the service boundary makes the check unavoidable: there is no path to the data that does not pass through it.'),
+  p('The placement of assertOwnership in the service instead of in a filter or a controller is a deliberate design decision and the most important one in this diagram. A servlet filter can only inspect the URL and the token; it cannot determine whether the opaque UUID in the path belongs to the caller without loading the resource, which is the service’s job. Placing the check in the controller would work, but it would mean that any future caller of the same service method (a scheduled task, a second controller, a message handler) would bypass it silently. Enforcing it at the service boundary makes the check unavoidable: there is no path to the data that does not pass through it.'),
   p('This design was validated during the project. A review found that the conversational endpoint declared a tailored-resume path variable and then discarded it, calling a service that performed no ownership check at all. The gap existed precisely because that one service had been written without the convention the rest of the codebase followed. It was closed by adding the same check, and a regression test now drives the endpoint as one user against another user’s resume and asserts that it is refused.'),
 
   sub('4.3 Supporting components'),
-  li('JwtAuthFilter — a OncePerRequestFilter that extracts and verifies the bearer token and populates the security context with the user identifier as the principal.'),
-  li('RateLimitFilter — a sliding-window limiter keyed per client and per protected path, holding request timestamps in a bounded deque.'),
-  li('TailoringProducer — wraps KafkaTemplate and publishes the tailoring event, isolating the rest of the service from the messaging API.'),
-  li('InputSanitizer — enforces size caps and screens for prompt-injection patterns before any user text reaches a prompt.'),
-  li('TailoringGuardrailValidator — validates model output against the expected section schema before it is persisted.'),
-  li('IdempotencyService — records processed event identifiers in Redis under a bounded time-to-live.'),
-  li('GlobalExceptionHandler — a @RestControllerAdvice translating exceptions into consistent JSON responses carrying a correlation identifier.'),
+  li('JwtAuthFilter: a OncePerRequestFilter that extracts and verifies the bearer token and populates the security context with the user identifier as the principal.'),
+  li('RateLimitFilter: a sliding-window limiter keyed per client and per protected path, holding request timestamps in a bounded deque.'),
+  li('TailoringProducer: wraps KafkaTemplate and publishes the tailoring event, isolating the rest of the service from the messaging API.'),
+  li('InputSanitizer: enforces size caps and screens for prompt-injection patterns before any user text reaches a prompt.'),
+  li('TailoringGuardrailValidator: validates model output against the expected section schema before it is persisted.'),
+  li('IdempotencyService: records processed event identifiers in Redis under a bounded time-to-live.'),
+  li('GlobalExceptionHandler: a @RestControllerAdvice translating exceptions into consistent JSON responses carrying a correlation identifier.'),
 
   sub('4.4 Design patterns applied'),
   p('The low-level design uses several established patterns. They are named here because the choice of pattern, and the reason for it, is part of the design rather than an accident of the framework.'),
@@ -546,8 +546,8 @@ body.push(
     [
       ['Repository', 'MasterResumeRepository, TailoredResumeRepository, JobDescriptionRepository', 'Separates the domain from persistence, so the service layer expresses business rules without embedding query mechanics. It is also what makes the service unit-testable, because a repository interface is trivial to substitute with a test double.'],
       ['Data Transfer Object', 'CreateMasterResumeRequest, TailoredResumeResponse and the other DTOs', 'Decouples the wire contract from the entity model, so the schema can change without altering the API and internal fields are never exposed accidentally.'],
-      ['Producer–Consumer', 'TailoringProducer and TailoringConsumer across the Kafka topic', 'Decouples the two services in time as well as in code; the producer has no reference to the consumer and does not wait for it.'],
-      ['Chain of Responsibility', 'The Spring Security filter chain — RateLimitFilter then JwtAuthFilter', 'Each filter handles one concern and either rejects the request or passes it on, so cross-cutting checks compose without any one filter knowing about the others.'],
+      ['Producer-Consumer', 'TailoringProducer and TailoringConsumer across the Kafka topic', 'Decouples the two services in time as well as in code; the producer has no reference to the consumer and does not wait for it.'],
+      ['Chain of Responsibility', 'The Spring Security filter chain, RateLimitFilter then JwtAuthFilter', 'Each filter handles one concern and either rejects the request or passes it on, so cross-cutting checks compose without any one filter knowing about the others.'],
       ['Proxy', 'Resilience4j circuit breaker and retry on OllamaApiCaller', 'The resilience policy wraps the call without the calling code knowing. This pattern is also the reason the annotation must sit on a public method of a separate bean, as Section 9.1 discusses.'],
       ['Facade', 'OllamaClient over OllamaApiCaller', 'Presents a single tailorResume operation while hiding prompt construction, truncation, the HTTP exchange and response parsing behind it.'],
       ['Guard Clause', 'assertOwnership at the head of every data-touching service method', 'Authorisation failures exit immediately and before any state change, which is what makes the check fail closed.'],
@@ -556,69 +556,69 @@ body.push(
     [2, 4, 6],
   ),
   spacerAfterTable(),
-  p('Two patterns that were considered and not used are worth recording. A transactional outbox would remove the dual write described in Section 9.3, but it adds a table and a relay process, and the retry endpoint already provides a manual recovery path for the failure it guards against. A Strategy for the scoring algorithm was rejected because there is only one scoring implementation; introducing an interface for a single implementor would add indirection without adding capability.'),
+  p('Two patterns that were considered and rejected are worth recording. A transactional outbox would remove the dual write described in Section 9.3, but it adds a table and a relay process, and the retry endpoint already provides a manual recovery path for the failure it guards against. A Strategy for the scoring algorithm was rejected because there is only one scoring implementation; introducing an interface for a single implementor would add indirection without adding capability.'),
   pageBreak(),
 );
 
 /* ── 5. Database Schema Design ────────────────────────────────── */
 body.push(
   chapter('Database Schema Design'),
-  p('The schema is owned by Flyway migrations V1 to V8 and is validated against the entity mapping at application startup, so a divergence between code and schema fails fast rather than silently corrupting data. Hibernate is configured with ddl-auto set to validate; it never alters the schema.'),
+  p('The schema is owned by Flyway migrations V1 to V8 and is validated against the entity mapping at application startup, so a divergence between code and schema fails fast instead of silently corrupting data. Hibernate is configured with ddl-auto set to validate; it never alters the schema.'),
 
   sub('5.1 Schema described textually'),
   p('Tables, with primary keys and the columns that carry meaning:'),
 
   sub3('users'),
-  li('id — uuid, Primary Key'),
-  li('email — varchar, unique'),
-  li('password_hash — varchar, BCrypt output'),
-  li('name — varchar'),
-  li('plan — varchar'),
-  li('email_verified — boolean'),
-  li('created_at — timestamp'),
+  li('id, uuid, Primary Key'),
+  li('email, varchar, unique'),
+  li('password_hash, varchar, BCrypt output'),
+  li('name, varchar'),
+  li('plan, varchar'),
+  li('email_verified, boolean'),
+  li('created_at, timestamp'),
 
   sub3('master_resumes'),
-  li('id — uuid, Primary Key'),
-  li('user_id — uuid, Foreign Key to users(id)'),
-  li('title — varchar'),
-  li('summary — text'),
-  li('version — integer, optimistic lock counter'),
-  li('created_at, updated_at — timestamp'),
+  li('id, uuid, Primary Key'),
+  li('user_id, uuid, Foreign Key to users(id)'),
+  li('title, varchar'),
+  li('summary, text'),
+  li('version, integer, optimistic lock counter'),
+  li('created_at, updated_at, timestamp'),
 
   sub3('master_resume_sections'),
-  li('id — uuid, Primary Key'),
-  li('master_resume_id — uuid, Foreign Key to master_resumes(id), NOT NULL'),
-  li('section_type — enum (SUMMARY, EXPERIENCE, EDUCATION, SKILLS, PROJECTS, OTHER)'),
-  li('content — text'),
-  li('position — integer, ordering within the resume'),
+  li('id, uuid, Primary Key'),
+  li('master_resume_id, uuid, Foreign Key to master_resumes(id), NOT NULL'),
+  li('section_type, enum (SUMMARY, EXPERIENCE, EDUCATION, SKILLS, PROJECTS, OTHER)'),
+  li('content, text'),
+  li('position, integer, ordering within the resume'),
 
   sub3('job_descriptions'),
-  li('id — uuid, Primary Key'),
-  li('user_id — uuid, Foreign Key to users(id)'),
-  li('company_name, job_title — varchar'),
-  li('description — text'),
-  li('required_skills — text'),
+  li('id, uuid, Primary Key'),
+  li('user_id, uuid, Foreign Key to users(id)'),
+  li('company_name, job_title, varchar'),
+  li('description, text'),
+  li('required_skills, text'),
 
   sub3('tailored_resumes'),
-  li('id — uuid, Primary Key'),
-  li('master_resume_id — uuid, Foreign Key to master_resumes(id)'),
-  li('job_description_id — uuid, Foreign Key to job_descriptions(id)'),
-  li('status — enum (PENDING, PROCESSING, COMPLETED, FAILED)'),
-  li('pdf_path — varchar, nullable'),
-  li('version — integer'),
-  li('created_at — timestamp'),
+  li('id, uuid, Primary Key'),
+  li('master_resume_id, uuid, Foreign Key to master_resumes(id)'),
+  li('job_description_id, uuid, Foreign Key to job_descriptions(id)'),
+  li('status, enum (PENDING, PROCESSING, COMPLETED, FAILED)'),
+  li('pdf_path, varchar, nullable'),
+  li('version, integer'),
+  li('created_at, timestamp'),
 
   sub3('tailored_resume_sections'),
-  li('id — uuid, Primary Key'),
-  li('tailored_resume_id — uuid, Foreign Key to tailored_resumes(id)'),
-  li('section_type — enum'),
-  li('content — text'),
+  li('id, uuid, Primary Key'),
+  li('tailored_resume_id, uuid, Foreign Key to tailored_resumes(id)'),
+  li('section_type, enum'),
+  li('content, text'),
 
   sub3('ats_score_results'),
-  li('id — uuid, Primary Key'),
-  li('tailored_resume_id — uuid, Foreign Key to tailored_resumes(id), unique'),
-  li('total_score — integer'),
-  li('keyword_score, section_score, action_verb_score — integer'),
+  li('id, uuid, Primary Key'),
+  li('tailored_resume_id, uuid, Foreign Key to tailored_resumes(id), unique'),
+  li('total_score, integer'),
+  li('keyword_score, section_score, action_verb_score, integer'),
 
   tableCaption('5.01', 'Database tables and their purpose'),
   table(
@@ -673,17 +673,17 @@ body.push(
 
   sub('5.3 Design decisions'),
   sub3('UUID primary keys'),
-  p('Every table uses a UUID primary key rather than an auto-incrementing integer. The reason is that identifiers appear in URLs. A sequential integer key would let any authenticated user enumerate the identifier space and discover how many records exist and whether a particular one does — information disclosure even where the authorisation check correctly refuses access. A UUID is not itself an access control, and the ownership check remains the actual protection, but it removes enumeration as a reconnaissance technique.'),
+  p('Every table uses a UUID primary key instead of an auto-incrementing integer. The reason is that identifiers appear in URLs. A sequential integer key would let any authenticated user enumerate the identifier space and discover how many records exist and whether a particular one does, information disclosure even where the authorisation check correctly refuses access. A UUID is not itself an access control, and the ownership check remains the actual protection, but it removes enumeration as a reconnaissance technique.'),
 
   sub3('Optimistic locking'),
   p('The master resume carries a version column. The editing interface saves automatically while the user types, and a tailoring job reads the same row; two writes can therefore overlap. Optimistic locking is preferable to pessimistic locking here because contention is rare and holding a row lock for the duration of an editing session would be far more disruptive than occasionally asking a client to retry a save.'),
 
   sub3('A cascade defect discovered during review'),
-  p('The upsert path clears the section collection and adds a replacement. The association was mapped with cascade = ALL but without orphanRemoval. For an inverse collection — one mapped with mappedBy, where the foreign key is owned by the child — Hibernate performs no collection-level DML. Without orphanRemoval the cleared children are never marked for deletion, and because the child’s foreign key column is NOT NULL, Hibernate cannot detach them either. The observable effect was that every save appended a duplicate section row rather than replacing the existing one, on the most frequently exercised write path in the application.'),
-  p('The defect is worth recording because of how it presented. No exception was raised, no test failed, and the API returned a success response every time. It was found by reasoning about cascade semantics rather than by observing a failure. The correction was to add orphanRemoval to the association, and the general lesson taken from it is that a successful API response is not evidence of a correct write.'),
+  p('The upsert path clears the section collection and adds a replacement. The association was mapped with cascade = ALL but without orphanRemoval. For an inverse collection (one mapped with mappedBy, where the foreign key is owned by the child) Hibernate performs no collection-level DML. Without orphanRemoval the cleared children are never marked for deletion, and because the child’s foreign key column is NOT NULL, Hibernate cannot detach them either. The observable effect was that every save appended a duplicate section row rather than replacing the existing one, on the most frequently exercised write path in the application.'),
+  p('The defect is worth recording because of how it presented. No exception was raised, no test failed, and the API returned a success response every time. It was found by reasoning about cascade semantics instead of by observing a failure. The correction was to add orphanRemoval to the association, and the general lesson taken from it is that a successful API response is not evidence of a correct write.'),
 
   sub3('Query design and the N+1 problem'),
-  p('Loading a resume and subsequently reading its sections issues one query for the parent and one for each child collection — the N+1 select problem. Three repository methods declare an explicit LEFT JOIN FETCH so that a parent and its collection are retrieved in a single statement. The measured effect of this is presented as a benchmark in Section 6.'),
+  p('Loading a resume and subsequently reading its sections issues one query for the parent and one for each child collection. The N+1 select problem. Three repository methods declare an explicit LEFT JOIN FETCH so that a parent and its collection are retrieved in a single statement. The measured effect of this is presented as a benchmark in Section 6.'),
   pageBreak(),
 );
 
@@ -697,10 +697,10 @@ body.push(
 
   sub('6.2 API request payload'),
   p('The request body is a TailorResumeRequest, validated at the controller boundary with Jakarta Bean Validation:'),
-  li('companyName — string, required'),
-  li('jobTitle — string, required'),
-  li('jobDescription — string, required, the full posting text'),
-  li('requiredSkills — string, optional'),
+  li('companyName, string, required'),
+  li('jobTitle, string, required'),
+  li('jobDescription, string, required, the full posting text'),
+  li('requiredSkills, string, optional'),
   p('The path variable masterResumeId identifies the source resume. A request failing validation is rejected with 400 before any business logic executes; a request for a resume the caller does not own is rejected with 403 and nothing is persisted.'),
   p('The response is a TailoredResumeResponse carrying the new record’s identifier and a status of PENDING, returned with 202 Accepted.'),
 
@@ -715,13 +715,13 @@ body.push(
   p('An earlier design used an asynchronous executor within the API service. It was replaced because a restart lost every in-flight job with no record that they had been accepted. Kafka makes an accepted request durable: a consumer that crashes mid-processing resumes from its last committed offset. The cost is an additional infrastructure dependency; the benefit is that the durability requirement NFR-02 is met by the platform rather than by application code.'),
 
   sub3('Why the score is computed in code'),
-  p('The obvious alternative is to ask the model to score its own output. This was rejected. A model-generated score is not reproducible — the same input can yield different numbers — and it cannot be explained to a user beyond restating it. Worse, the component that produced the text would also be grading it. Computing the score in code from an explicit weighted formula makes it deterministic, explainable and independent of the generator.'),
+  p('The obvious alternative is to ask the model to score its own output. This was rejected. A model-generated score is not reproducible, the same input can yield different numbers, and it cannot be explained to a user beyond restating it. Worse, the component that produced the text would also be grading it. Computing the score in code from an explicit weighted formula makes it deterministic, explainable and independent of the generator.'),
 
   sub3('Why model output is validated'),
   p('Early iterations persisted whatever the model returned, which produced conversational narration stored as resume content and occasionally malformed structure. The output is now validated against an allow-list of section keys with length bounds and narration screening. The operating rule is that the model is an untrusted content source whose output must satisfy a schema before it is written.'),
 
   sub('6.5 Performance optimisation and benchmarking'),
-  p('The listing path — retrieving all of a user’s master resumes together with their sections — exhibited the N+1 select problem. The derived query findByUserId returns the parent rows, and each subsequent access to a resume’s section collection triggers an additional select. For a user with N resumes the operation costs N+1 round trips to the database, and the cost grows linearly with the size of the user’s data.'),
+  p('The listing path, retrieving all of a user’s master resumes together with their sections, exhibited the N+1 select problem. The derived query findByUserId returns the parent rows, and each subsequent access to a resume’s section collection triggers an additional select. For a user with N resumes the operation costs N+1 round trips to the database, and the cost grows linearly with the size of the user’s data.'),
   p('The optimisation was to add a repository method declaring an explicit LEFT JOIN FETCH, so that parents and their sections are retrieved in one statement:'),
   new Paragraph({
     spacing: { before: 120, after: 160, line: LINE1 },
@@ -748,7 +748,7 @@ body.push(
   ),
   spacerAfterTable(),
   ...figure('fig_6_02_benchmark', '6.02', 'N+1 optimisation: queries and latency, before and after'),
-  p('The statement count falls from 31 to 1 — one query for the parents plus one per resume, collapsed into a single fetch-joined query. Median latency falls from 3.487 ms to 1.126 ms, an improvement of 67.7%. The proportional gain would be substantially larger against a networked database, because each eliminated statement there costs a network round trip rather than an in-process call.'),
+  p('The statement count falls from 31 to 1, one query for the parents plus one per resume, collapsed into a single fetch-joined query. Median latency falls from 3.487 ms to 1.126 ms, an improvement of 67.7%. The proportional gain would be substantially larger against a networked database, because each eliminated statement there costs a network round trip instead of an in-process call.'),
   p('The result also scales differently. The lazy implementation is O(N) in database round trips, so its cost grows with the number of resumes a user owns; the fetch-joined implementation is O(1) in round trips regardless. The optimisation therefore matters most for the users who have used the product most, which is the correct place for it to matter.'),
   pageBreak(),
 );
@@ -765,31 +765,31 @@ body.push(
 
   sub('7.2 EC2 and the compute tier'),
   p('The resume service and the worker service run on EC2 instances in the private application subnet, managed by an Auto Scaling Group across at least two availability zones. Containerising the services and running them on ECS with an EC2 or Fargate capacity provider is the preferable variant, because the project already produces Docker images for all three services; the network design is unchanged either way.'),
-  p('The two services scale on different signals, which is the operational payoff of having separated them. The resume service scales on request rate and CPU. The worker service scales on Kafka consumer lag — the count of unprocessed events — because its load is a queue depth rather than a request rate. A backlog of tailoring jobs adds worker instances without adding API instances that are not needed.'),
+  p('The two services scale on different signals, which is the operational payoff of having separated them. The resume service scales on request rate and CPU. The worker service scales on Kafka consumer lag, the count of unprocessed events, because its load is a queue depth instead of a request rate. A backlog of tailoring jobs adds worker instances without adding API instances that are not needed.'),
 
   sub('7.3 Application Load Balancer'),
   p('An Application Load Balancer in the public subnet terminates TLS and is the only component addressable from the internet. It performs health checks against the Spring Boot Actuator health endpoint and removes failing instances from rotation. Because it operates at layer seven it can route by path, which is where the API gateway’s routing responsibility would be consolidated in a production deployment.'),
 
   sub('7.4 Security Groups'),
   p('Security groups are stateful instance-level firewalls, and the design uses them as a chain in which each tier accepts traffic only from the tier in front of it:'),
-  li('ALB security group — inbound 443 from 0.0.0.0/0. This is the only rule in the system that admits the public internet.'),
-  li('Application security group — inbound 8081 and 8082 from the ALB security group only, referenced by group rather than by IP address so the rule stays correct as instances are replaced.'),
-  li('Database security group — inbound 5432 from the application security group only.'),
-  li('Cache security group — inbound 6379 from the application security group only.'),
-  p('Referencing security groups rather than address ranges is what makes this durable under auto-scaling: instances come and go with new private addresses, and no rule needs to change.'),
+  li('ALB security group, inbound 443 from 0.0.0.0/0. This is the only rule in the system that admits the public internet.'),
+  li('Application security group, inbound 8081 and 8082 from the ALB security group only, referenced by group rather than by IP address so the rule stays correct as instances are replaced.'),
+  li('Database security group, inbound 5432 from the application security group only.'),
+  li('Cache security group, inbound 6379 from the application security group only.'),
+  p('Referencing security groups instead of address ranges is what makes this durable under auto-scaling: instances come and go with new private addresses, and no rule needs to change.'),
 
   sub('7.5 RDS and ElastiCache'),
-  p('PostgreSQL runs on RDS in a Multi-AZ configuration, which maintains a synchronous standby in a second availability zone and fails over automatically. RDS also provides automated backups and point-in-time recovery, which for a system holding a user’s only copy of their resume is a requirement rather than an enhancement. Flyway migrations run at application startup, so a deployment applies pending migrations before serving traffic.'),
+  p('PostgreSQL runs on RDS in a Multi-AZ configuration, which keeps a synchronous standby in a second availability zone and fails over automatically. RDS also provides automated backups and point-in-time recovery, which for a system holding a user’s only copy of their resume is a requirement rather than an enhancement. Flyway migrations run at application startup, so a deployment applies pending migrations before serving traffic.'),
   p('Redis runs on ElastiCache and holds the idempotency keys described in Section 6. Its contents are deliberately disposable: every key carries a 24-hour expiry, and losing the cache degrades the system to at-least-once processing rather than breaking it. This is the correct durability posture for the data it holds.'),
-  p('Kafka is provided by Amazon MSK rather than self-managed brokers, because broker operation — rebalancing, patching, storage management — is substantial work that is not part of this project’s subject matter.'),
+  p('Kafka is provided by Amazon MSK instead of self-managed brokers, because broker operation (rebalancing, patching, storage management) is substantial work that is not part of this project’s subject matter.'),
 
   sub('7.6 Secrets and supporting services'),
   p('Database credentials and the JWT signing secret are held in AWS Secrets Manager and injected at container start, never baked into an image or committed. This matches the application’s existing configuration model, in which every production value resolves from an environment variable and the application fails to start if a required one is absent. S3 provides object storage for generated PDF documents; as Section 9 records, PDF generation is implemented but not currently wired, and the absence of object storage is precisely why.'),
 
   sub('7.7 Scaling characteristics'),
   p('The two services scale on different signals, which is the operational return on having separated them. The resume service is bound by request rate and database connections and scales horizontally behind the load balancer; because authentication is stateless, any instance can serve any request and adding one requires no session migration. The worker service is bound by model throughput and scales on Kafka consumer lag, the count of events not yet processed. That distinction is the point: a backlog of tailoring jobs adds worker instances without adding API instances that would sit idle.'),
-  p('The limit on worker scaling is the topic partition count, since Kafka assigns each partition to at most one consumer in a group — adding consumers beyond the partition count adds no throughput. Partitioning by tailored-resume identifier would distribute load evenly while keeping all events for one job ordered. Beyond that the constraint becomes the model endpoint itself, which is a fixed external capacity and the reason the input size caps in Section 6 exist: they bound the cost and latency of a single request so that one oversized document cannot consume the capacity of many normal ones.'),
-  p('The database is the component least able to scale horizontally. Reads dominate this workload, so the first step would be a read replica serving the listing endpoints, with writes continuing to the primary. The fetch-joined queries described in Section 6.5 matter here too: an endpoint issuing one query rather than N postpones the point at which the connection pool becomes the bottleneck, which is why that optimisation is a scaling measure and not only a latency measure.'),
+  p('The limit on worker scaling is the topic partition count, since Kafka assigns each partition to at most one consumer in a group, adding consumers beyond the partition count adds no throughput. Partitioning by tailored-resume identifier would distribute load evenly while keeping all events for one job ordered. Beyond that the constraint becomes the model endpoint itself, which is a fixed external capacity and the reason the input size caps in Section 6 exist: they bound the cost and latency of a single request so that one oversized document cannot consume the capacity of many normal ones.'),
+  p('The database is the component least able to scale horizontally. Reads dominate this workload, so the first step would be a read replica serving the listing endpoints, with writes continuing to the primary. The fetch-joined queries described in Section 6.5 matter here too: an endpoint issuing one query instead of N postpones the point at which the connection pool becomes the bottleneck, which is why that optimisation is a scaling measure and not only a latency measure.'),
 
   sub('7.8 What is currently deployed'),
   p('The architecture above is the target design. The system as delivered is deployed to Render using the render.yaml descriptor in the repository, with a managed PostgreSQL instance and an external Kafka provider. Render was chosen during development because it removes VPC, subnet and security group configuration entirely, which shortened the deployment feedback loop at a stage when the application itself was changing daily.'),
@@ -804,12 +804,12 @@ body.push(
 
   sub('8.1 Java 21 and Spring Boot 3.3'),
   p('Java 21 is a long-term-support release of a statically typed, garbage-collected language running on the JVM. Spring Boot is an application framework providing dependency injection, auto-configuration, and integration with data access, security and messaging.'),
-  p('It was chosen because the concerns in this project — declarative transactions, a security filter chain, JPA persistence and Kafka integration — are all first-class in the Spring ecosystem rather than assembled from unrelated libraries. Static typing also carries weight on a system with seven interrelated entities: a rename or a signature change surfaces at compile time rather than in production.'),
+  p('It was chosen because the concerns in this project (declarative transactions, a security filter chain, JPA persistence and Kafka integration) are all first-class in the Spring ecosystem instead of assembled from unrelated libraries. Static typing also carries weight on a system with seven interrelated entities: a rename or a signature change surfaces at compile time instead of in production.'),
   p('In industry, Spring Boot is the dominant backend framework in enterprise Java. Netflix built much of its microservice platform on Spring, contributing components later absorbed into Spring Cloud. Banks including Goldman Sachs and HSBC run core transaction processing on the JVM, where a mature concurrency model and predictable garbage collection matter more than language novelty.'),
 
   sub('8.2 Apache Kafka'),
   p('Kafka is a distributed, append-only commit log. Producers append events to a topic; consumers read forward at their own pace, tracking position by committed offset. Unlike a traditional message queue, reading does not destroy the message: it is retained for a configured period, so a consumer can replay history.'),
-  p('It was chosen for durability. An in-memory queue loses accepted work when the process restarts. With Kafka, an accepted tailoring request survives a worker crash: the consumer resumes from its last committed offset and reprocesses. It also decouples the two services in time, so the worker can be slower than the API without applying back-pressure to callers, and the offset model makes at-least-once delivery explicit — which is why the idempotency layer described in Section 6 exists.'),
+  p('It was chosen for durability. An in-memory queue loses accepted work when the process restarts. With Kafka, an accepted tailoring request survives a worker crash: the consumer resumes from its last committed offset and reprocesses. It also decouples the two services in time, so the worker can be slower than the API without applying back-pressure to callers, and the offset model makes at-least-once delivery explicit. Which is why the idempotency layer described in Section 6 exists.'),
   p('Kafka originated at LinkedIn for activity stream processing and is now infrastructure at very large scale. Uber uses it for trip events and real-time pricing; Netflix ingests hundreds of billions of events per day through it for viewing telemetry; and it is widely used in financial services for trade event pipelines, where the ability to replay a day’s events for audit is a regulatory requirement rather than a convenience.'),
 
   sub('8.3 PostgreSQL and Flyway'),
@@ -819,31 +819,31 @@ body.push(
 
   sub('8.4 Redis'),
   p('Redis is an in-memory data structure store, commonly used as a cache, a distributed lock, a rate limiter or a short-lived key store, with optional persistence and native key expiry.'),
-  p('It is used here for consumer idempotency. When the worker begins processing an event it records a key derived from the tailored-resume identifier with a 24-hour expiry, and checks that key before doing work. The requirement is a fast, keyed existence check on short-lived data — Redis is exactly shaped for that, and modelling it as a database table would mean a durable write and a cleanup job for data that is worthless after a day.'),
+  p('It is used here for consumer idempotency. When the worker begins processing an event it records a key derived from the tailored-resume identifier with a 24-hour expiry, and checks that key before doing work. The requirement is a fast, keyed existence check on short-lived data, Redis is exactly shaped for that, and modelling it as a database table would mean a durable write and a cleanup job for data that is worthless after a day.'),
   p('Twitter uses Redis for timeline caching; Stack Overflow uses it as a distributed cache serving a large fraction of page views; and it is the standard backing store for rate limiters and session state in web architectures generally.'),
 
   sub('8.5 Large language models via Ollama'),
   p('Ollama runs large language models locally and exposes an OpenAI-compatible chat-completions API, so the same client code works against a local model or a hosted endpoint by changing a URL.'),
   p('It was chosen to avoid per-token cost during development, where the tailoring prompt was invoked repeatedly during iteration, and because the compatible interface means the deployment can move to a hosted provider through configuration alone. The rewriting task is one where a language model is genuinely the right tool: rephrasing experience in the vocabulary of a posting requires handling language that no rule-based transformation would manage well.'),
-  p('Generative models are now in production across recruitment technology, customer support triage, code assistance and document summarisation. The engineering lesson from this project generalises beyond the specific model: a language model is a slow, non-deterministic network dependency producing untrusted output, and it should be integrated with the same defensive posture as any third-party service — timeouts, retries, asynchronous execution, and schema validation of everything it returns.'),
+  p('Generative models are now in production across recruitment technology, customer support triage, code assistance and document summarisation. The engineering lesson from this project generalises beyond the specific model: a language model is a slow, non-deterministic network dependency producing untrusted output, and it should be integrated with the same defensive posture as any third-party service, timeouts, retries, asynchronous execution, and schema validation of everything it returns.'),
 
   sub('8.6 Spring Security and JSON Web Tokens'),
   p('A JWT is a signed, self-describing token carrying claims about the bearer. Because the signature is verifiable using a key the server already holds, no server-side session lookup is needed to authenticate a request.'),
-  p('Statelessness was the deciding factor: any instance behind the load balancer can verify a token independently, so instances can be added and removed freely. The implementation uses jjwt 0.12.6 with the verifyWith and parseSignedClaims API, which requires a valid signature at parse time and so rejects unsigned tokens and the alg:none substitution attack at the library level rather than in application code.'),
+  p('Statelessness was the deciding factor: any instance behind the load balancer can verify a token independently, so instances can be added and removed freely. The implementation uses jjwt 0.12.6 with the verifyWith and parseSignedClaims API, which requires a valid signature at parse time and so rejects unsigned tokens and the alg:none substitution attack at the library level instead of in application code.'),
   p('Token-based authentication underpins OAuth 2.0 and OpenID Connect and is the standard mechanism for API authentication across the industry, including every major cloud provider’s API.'),
 
   sub('8.7 Docker and containerisation'),
   p('Docker packages an application with its dependencies into an image that runs identically wherever a container runtime exists. All three services build multi-stage images: a build stage compiles with Maven, and a runtime stage copies only the resulting artifact onto a slim JRE base, keeping images small and excluding build tooling from the deployed surface. Containers run as a non-root user.'),
-  p('Containerisation is close to universal in modern deployment and is the packaging format underlying Kubernetes, ECS and most managed platforms — including Render, where this project is currently deployed.'),
+  p('Containerisation is close to universal in modern deployment and is the packaging format underlying Kubernetes, ECS and most managed platforms, including Render, where this project is currently deployed.'),
 
   sub('8.8 Observability: structured logging, Micrometer, Prometheus and Grafana'),
-  p('Logback is configured to emit JSON rather than plain lines, so every log event is a structured record that a collector can index by field instead of by regular expression. Requests carry a correlation identifier through the SLF4J mapped diagnostic context, which means the log lines belonging to one request can be retrieved together even when several are interleaved — and because an unhandled exception returns that identifier to the client and nothing else, a user reporting a failure supplies exactly the key an operator needs.'),
+  p('Logback is configured to emit JSON rather than plain lines, so every log event is a structured record that a collector can index by field instead of by regular expression. Requests carry a correlation identifier through the SLF4J mapped diagnostic context, which means the log lines belonging to one request can be retrieved together even when several are interleaved. And because an unhandled exception returns that identifier to the client and nothing else, a user reporting a failure supplies exactly the key an operator needs.'),
   p('Micrometer instruments the application and exposes a Prometheus scrape endpoint through Spring Boot Actuator. The counter on tailoring requests is the metric that matters most operationally: compared against the count of records reaching COMPLETED it gives the pipeline success rate, and a divergence between the two is the signal that the model endpoint is degrading. Prometheus scrapes the services and Grafana provisions its datasource and dashboards from files in the repository, so a monitoring stack comes up with the dashboard already present rather than requiring manual configuration.'),
-  p('This area is where a defect was found late. The worker service exposed only its health endpoint, so the Prometheus scrape returned 404 for it and three of the four dashboard panels could never populate — the dashboard looked correct while displaying nothing. Monitoring that is never checked against a real signal will fail silently, and the only reliable defence is to verify the scrape target rather than the dashboard definition.'),
+  p('This area is where a defect was found late. The worker service exposed only its health endpoint, so the Prometheus scrape returned 404 for it and three of the four dashboard panels could never populate. The dashboard looked correct while displaying nothing. Monitoring that is never checked against a real signal will fail silently, and the only reliable defence is to verify the scrape target instead of the dashboard definition.'),
 
   sub('8.9 Testing: JUnit 5, Mockito and JaCoCo'),
-  p('JUnit 5 provides the test framework, Mockito supplies the test doubles, Spring Boot Test provides context and MockMvc support for driving the HTTP layer without a running server, and JaCoCo measures coverage by instrumenting bytecode during the test run. The choice to measure coverage rather than estimate it is deliberate: an earlier revision of this project documentation asserted a coverage figure that had never been measured and was wrong by an order of magnitude.'),
-  p('The suite comprises 94 tests, all passing, and is verified reproducibly — the committed tree is exported with git archive into a clean directory and built there, so the result reflects the repository rather than a developer machine.'),
+  p('JUnit 5 provides the test framework, Mockito supplies the test doubles, Spring Boot Test provides context and MockMvc support for driving the HTTP layer without a running server, and JaCoCo measures coverage by instrumenting bytecode during the test run. The choice to measure coverage instead of estimate it is deliberate: an earlier revision of this project documentation asserted a coverage figure that had never been measured and was wrong by an order of magnitude.'),
+  p('The suite comprises 94 tests, all passing, and is verified reproducibly. The committed tree is exported with git archive into a clean directory and built there, so the result reflects the repository rather than a developer machine.'),
 
   tableCaption('8.01', 'Automated test suites'),
   table(
@@ -862,15 +862,15 @@ body.push(
   spacerAfterTable(),
 
   sub3('Testing strategy'),
-  p('The suite is shaped as a pyramid. The widest layer is fast unit tests with no Spring context at all — the scoring and keyword components, and ResumeServiceTest, which exercises the service against mocked collaborators and runs in milliseconds. Above that sit slice tests: AuthServiceTest uses @DataJpaTest, which starts the persistence layer against an in-memory database but not the web tier. At the top, and deliberately the smallest layer, are full-context tests: BOLATest and RateLimitFilterTest start the whole application and drive it over HTTP through MockMvc, because the properties they verify — that a filter chain refuses a cross-tenant request, that a rate limiter returns 429 — are properties of the assembled system and cannot be observed in a unit test.'),
+  p('The suite is shaped as a pyramid. The widest layer is fast unit tests with no Spring context at all. The scoring and keyword components, and ResumeServiceTest, which exercises the service against mocked collaborators and runs in milliseconds. Above that sit slice tests: AuthServiceTest uses @DataJpaTest, which starts the persistence layer against an in-memory database but not the web tier. At the top, and deliberately the smallest layer, are full-context tests: BOLATest and RateLimitFilterTest start the whole application and drive it over HTTP through MockMvc, because the properties they verify (that a filter chain refuses a cross-tenant request, that a rate limiter returns 429) are properties of the assembled system and cannot be observed in a unit test.'),
   p('The shape matters for feedback speed. The unit layer runs in under a second and catches most logic errors; the full-context tests take seconds each and are reserved for behaviour that only emerges once the components are wired together. Writing an authorisation test as a unit test would prove that a method throws, not that the endpoint refuses the request, which is the property that actually protects a user.'),
-  p('Two things are deliberately not covered. There is no end-to-end test spanning Kafka and the worker, because it would require a broker, a database and a model endpoint, and would be slow and non-deterministic — the correct tool is Testcontainers, which is recorded as future work. And there is no test that exercises the Flyway migration chain, since the test profile builds its schema from the entity mapping instead; the migrations are consequently verified only at application startup, which Section 9.3 records as a limitation.'),
+  p('Two things are deliberately not covered. There is no end-to-end test spanning Kafka and the worker, because it would require a broker, a database and a model endpoint, and would be slow and non-deterministic. The correct tool is Testcontainers, which is recorded as future work. And there is no test that exercises the Flyway migration chain, since the test profile builds its schema from the entity mapping instead; the migrations are consequently verified only at application startup, which Section 9.3 records as a limitation.'),
 
   sub3('Test doubles and why the distinction matters'),
   p('A test double is any object substituted for a real collaborator. The suite uses three kinds, and they are not interchangeable:'),
-  li('Stub — an object configured to return prepared answers, supplying the state a scenario needs. The repositories are stubbed with when(...).thenReturn(...) so a test can describe a resume that exists and is owned by a particular user, without a database.'),
-  li('Mock — a double whose interactions are themselves the assertion. TailoringProducer is a mock: the observable behaviour of triggerTailoring is that it publishes exactly one event with particular contents, so the test asserts with verify() and an ArgumentCaptor rather than by inspecting a return value. Equally important is the negative case, verified with never() and verifyNoInteractions(): when an ownership check fails, no job description is saved, no tailored resume is written, and nothing is published.'),
-  li('Fake — a real but simplified implementation. SimpleMeterRegistry is used in place of the production MeterRegistry because ResumeService constructs a Counter from it; a mock would return null and the constructor would fail. A fake is the correct double whenever the collaborator has behaviour the subject genuinely depends on.'),
+  li('Stub: an object configured to return prepared answers, supplying the state a scenario needs. The repositories are stubbed with when(...).thenReturn(...) so a test can describe a resume that exists and is owned by a particular user, without a database.'),
+  li('Mock: a double whose interactions are themselves the assertion. TailoringProducer is a mock: the observable behaviour of triggerTailoring is that it publishes exactly one event with particular contents, so the test asserts with verify() and an ArgumentCaptor instead of by inspecting a return value. Equally important is the negative case, verified with never() and verifyNoInteractions(): when an ownership check fails, no job description is saved, no tailored resume is written, and nothing is published.'),
+  li('Fake: a real but simplified implementation. SimpleMeterRegistry is used in place of the production MeterRegistry because ResumeService constructs a Counter from it; a mock would return null and the constructor would fail. A fake is the correct double whenever the collaborator has behaviour the subject genuinely depends on.'),
   p('The distinction has practical consequences. A suite that only stubs can confirm what a method returns but not what it did, so a service that silently skipped publishing its event would still pass. Verifying the interaction is what turns the test into a specification of behaviour.'),
 
   tableCaption('8.02', 'Technology selection and rationale'),
@@ -903,20 +903,20 @@ body.push(
   p('The most valuable lesson was that the boundary between the two services is defined by the runtime characteristics of the work rather than by the domain. The API is bound by database connections and must be fast and predictable; the worker is bound by model throughput and is permitted to be slow and to fail. Once that boundary is drawn, questions that were previously difficult become straightforward: what to scale, what to retry, what a client should be told while work is outstanding.'),
 
   sub3('Delivery guarantees dictate application design'),
-  p('Understanding that Kafka provides at-least-once rather than exactly-once delivery changed the consumer’s design. Redelivery is normal operation rather than an error, so the consumer must be idempotent. This is a general property of distributed messaging and not a Kafka limitation, and internalising it is the difference between a system that works in testing and one that works under failure.'),
+  p('Understanding that Kafka provides at-least-once instead of exactly-once delivery changed the consumer’s design. Redelivery is normal operation instead of an error, so the consumer must be idempotent. This is a general property of distributed messaging and not a Kafka limitation, and internalising it is the difference between a system that works in testing and one that works under failure.'),
 
   sub3('A successful response is not evidence of a correct write'),
   p('The cascade defect described in Section 5.3 corrupted data on the most frequently used write path while raising no error and failing no test. Finding it required reasoning about ORM semantics rather than observing a failure. The general lesson is that an ORM abstracts the database but does not remove the need to understand what it emits.'),
 
   sub3('Authorisation belongs where it cannot be bypassed'),
-  p('Placing the ownership check at the service boundary rather than in controllers was validated when a review found an endpoint that had been written without it. Because the convention was to enforce in the service, the gap was localised to one class and closing it was a small change with a regression test, rather than an audit of every controller.'),
+  p('Placing the ownership check at the service boundary instead of in controllers was validated when a review found an endpoint that had been written without it. Because the convention was to enforce in the service, the gap was localised to one class and closing it was a small change with a regression test, instead of an audit of every controller.'),
 
   sub3('Documentation that contradicts the code is worse than none'),
   p('Several planning documents in the repository described work as outstanding that had been completed, and one specified a component that was never written. A reader encountering them would have concluded the system was half-finished. They were removed and the project README rewritten against the actual code with every claim verified. Accurate documentation is part of the deliverable, not an accompaniment to it.'),
 
   sub('9.2 Practical applications'),
   p('The immediate application is the one the system was built for: reducing the manual effort of tailoring a resume per application while giving the candidate a reproducible measure of how well the result matches the posting.'),
-  p('The architectural pattern generalises well beyond that. Any system integrating a generative model into a transactional application faces the same constraints — the model is slow, non-deterministic, occasionally unavailable, and produces output that must not be trusted. The combination used here of a durable queue, an idempotent consumer, schema validation on output and a deterministic scoring step computed outside the model applies directly to document processing in insurance and legal work, to clinical note summarisation in healthcare, to support ticket triage, and to any workflow where a model proposes content that a system must then store and act upon.'),
+  p('The architectural pattern generalises well beyond that. Any system integrating a generative model into a transactional application faces the same constraints. The model is slow, non-deterministic, occasionally unavailable, and produces output that must not be trusted. The combination used here of a durable queue, an idempotent consumer, schema validation on output and a deterministic scoring step computed outside the model applies directly to document processing in insurance and legal work, to clinical note summarisation in healthcare, to support ticket triage, and to any workflow where a model proposes content that a system must then store and act upon.'),
   p('The scoring approach is worth isolating as a transferable idea. Where a generative component produces output that must be assessed, computing the assessment in deterministic code rather than asking the model to grade itself yields a metric that is reproducible, explainable to an end user, and independent of the generator.'),
 
   sub('9.3 Limitations'),
@@ -958,33 +958,33 @@ const ref = (text) => new Paragraph({
 
 body.push(
   chapter('References', true),
-  ref('Apache Software Foundation, Apache Kafka Documentation — Design and Delivery Semantics, kafka.apache.org/documentation, referred August 2026.'),
+  ref('Apache Software Foundation, Apache Kafka Documentation: Design and Delivery Semantics, kafka.apache.org/documentation, referred August 2026.'),
   ref('VMware Tanzu, Spring Boot Reference Documentation, version 3.3, docs.spring.io/spring-boot/docs/current/reference/html, referred August 2026.'),
-  ref('VMware Tanzu, Spring Security Reference — Architecture and Authorization, docs.spring.io/spring-security/reference, referred August 2026.'),
-  ref('Red Hat, Hibernate ORM 6.5 User Guide — Associations, Fetching and Locking, docs.jboss.org/hibernate/orm/6.5/userguide, referred August 2026.'),
-  ref('PostgreSQL Global Development Group, PostgreSQL 16 Documentation — Indexes and Concurrency Control, postgresql.org/docs/16, referred August 2026.'),
-  ref('Redgate, Flyway Documentation — Migrations and Versioning, documentation.red-gate.com/flyway, referred August 2026.'),
-  ref('Redis Ltd., Redis Documentation — Key Expiration and Data Types, redis.io/docs, referred August 2026.'),
+  ref('VMware Tanzu, Spring Security Reference: Architecture and Authorization, docs.spring.io/spring-security/reference, referred August 2026.'),
+  ref('Red Hat, Hibernate ORM 6.5 User Guide: Associations, Fetching and Locking, docs.jboss.org/hibernate/orm/6.5/userguide, referred August 2026.'),
+  ref('PostgreSQL Global Development Group, PostgreSQL 16 Documentation: Indexes and Concurrency Control, postgresql.org/docs/16, referred August 2026.'),
+  ref('Redgate, Flyway Documentation: Migrations and Versioning, documentation.red-gate.com/flyway, referred August 2026.'),
+  ref('Redis Ltd., Redis Documentation: Key Expiration and Data Types, redis.io/docs, referred August 2026.'),
   ref('Amazon Web Services, Amazon VPC User Guide and Security Group Rules Reference, docs.aws.amazon.com/vpc, referred August 2026.'),
-  ref('Amazon Web Services, Amazon RDS User Guide — Multi-AZ Deployments, docs.aws.amazon.com/AmazonRDS, referred August 2026.'),
+  ref('Amazon Web Services, Amazon RDS User Guide: Multi-AZ Deployments, docs.aws.amazon.com/AmazonRDS, referred August 2026.'),
   ref('Amazon Web Services, Amazon Managed Streaming for Apache Kafka Developer Guide, docs.aws.amazon.com/msk, referred August 2026.'),
-  ref('OWASP Foundation, OWASP API Security Top 10 — API1:2023 Broken Object Level Authorization, owasp.org/API-Security, referred August 2026.'),
-  ref('OWASP Foundation, OWASP Top 10 for Large Language Model Applications — LLM01 Prompt Injection, owasp.org/www-project-top-10-for-large-language-model-applications, referred August 2026.'),
+  ref('OWASP Foundation, OWASP API Security Top 10: API1:2023 Broken Object Level Authorization, owasp.org/API-Security, referred August 2026.'),
+  ref('OWASP Foundation, OWASP Top 10 for Large Language Model Applications: LLM01 Prompt Injection, owasp.org/www-project-top-10-for-large-language-model-applications, referred August 2026.'),
   ref('Jones M., Bradley J. and Sakimura N., RFC 7519: JSON Web Token (JWT), Internet Engineering Task Force, 2015.'),
-  ref('Fielding R. and Reschke J., RFC 7231: HTTP/1.1 Semantics and Content — Section 6.3.3 (202 Accepted), Internet Engineering Task Force, 2014.'),
+  ref('Fielding R. and Reschke J., RFC 7231: HTTP/1.1 Semantics and Content: Section 6.3.3 (202 Accepted), Internet Engineering Task Force, 2014.'),
   ref('Provos N. and Mazières D., A Future-Adaptable Password Scheme, USENIX Annual Technical Conference, 1999.'),
   ref('Kleppmann M., Designing Data-Intensive Applications, O’Reilly Media, 2017.'),
   ref('Newman S., Building Microservices: Designing Fine-Grained Systems, 2nd edition, O’Reilly Media, 2021.'),
-  ref('Richardson C., Microservices Patterns — Chapter 3, Transactional Messaging and the Outbox Pattern, Manning Publications, 2018.'),
-  ref('Fowler M., Patterns of Enterprise Application Architecture — Optimistic Offline Lock, Addison-Wesley, 2002.'),
+  ref('Richardson C., Microservices Patterns, Chapter 3, Transactional Messaging and the Outbox Pattern, Manning Publications, 2018.'),
+  ref('Fowler M., Patterns of Enterprise Application Architecture, Optimistic Offline Lock, Addison-Wesley, 2002.'),
   ref('EclEmma, JaCoCo Java Code Coverage Library Documentation, jacoco.org/jacoco/trunk/doc, referred August 2026.'),
 );
 
 /* ═══════════════════════════════════════════════════════════════ */
 const doc = new Document({
   creator: D.name,
-  title: 'ResumeForge — Applied Software Project Report',
-  description: 'Master of Science in Computer Science — Scaler Neovarsity / Woolf',
+  title: 'ResumeForge, Applied Software Project Report',
+  description: 'Master of Science in Computer Science, Scaler Neovarsity / Woolf',
   numbering: {
     config: [
       {

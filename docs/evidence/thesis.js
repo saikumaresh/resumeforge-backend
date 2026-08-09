@@ -49,9 +49,10 @@ const p = (text, o = {}) => new Paragraph({
 });
 
 /** Chapter heading — centred, bold, 14pt. */
-const chapter = (text) => new Paragraph({
+const chapter = (text, breakBefore = false) => new Paragraph({
   heading: HeadingLevel.HEADING_1,
   alignment: AlignmentType.CENTER,
+  pageBreakBefore: breakBefore,
   spacing: { before: 360, after: 220, line: LINE15 },
   children: [t(text, { size: HEAD, bold: true })],
 });
@@ -945,7 +946,6 @@ body.push(
   ni('Execute the Flyway chain against PostgreSQL in tests using Testcontainers.', 0, 1),
   ni('Provision object storage and complete the PDF export feature.', 0, 1),
   ni('Move the rate limiter’s window into Redis so limits hold across instances, and key it on a trusted proxy header.', 0, 1),
-  pageBreak(),
 );
 
 /* ── 10. References ───────────────────────────────────────────── */
@@ -957,7 +957,7 @@ const ref = (text) => new Paragraph({
 });
 
 body.push(
-  chapter('References'),
+  chapter('References', true),
   ref('Apache Software Foundation, Apache Kafka Documentation — Design and Delivery Semantics, kafka.apache.org/documentation, referred August 2026.'),
   ref('VMware Tanzu, Spring Boot Reference Documentation, version 3.3, docs.spring.io/spring-boot/docs/current/reference/html, referred August 2026.'),
   ref('VMware Tanzu, Spring Security Reference — Architecture and Authorization, docs.spring.io/spring-security/reference, referred August 2026.'),

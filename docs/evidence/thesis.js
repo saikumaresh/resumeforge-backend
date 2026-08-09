@@ -122,6 +122,21 @@ function figure(fileBase, num, caption) {
   ];
 }
 
+
+/** Centred image at an explicit size in inches — used for the title-page logos. */
+function logo(fileBase, ext, widthIn, heightIn, afterSpacing) {
+  const buf = fs.readFileSync(path.join(FIG, fileBase + '.' + ext));
+  return new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { after: afterSpacing ?? 240, line: LINE1 },
+    children: [new ImageRun({
+      type: ext === 'jpg' ? 'jpg' : 'png',
+      data: buf,
+      transformation: { width: Math.round(widthIn * 96), height: Math.round(heightIn * 96) },
+    })],
+  });
+}
+
 /* ── tables ────────────────────────────────────────────────────── */
 const TW = 8700; // twips; ≈5.7in usable width
 
@@ -173,12 +188,14 @@ const ctr = (text, o = {}) => new Paragraph({
 });
 
 front.push(
-  ...blank(3),
-  ctr('Applied Software Project Report', { size: 36, bold: true, after: 400 }),
-  ctr('By', { after: 300 }),
-  ctr(D.name, { size: 30, bold: true, after: 500 }),
-  ctr('A Master’s Project Report submitted to Scaler Neovarsity - Woolf in partial fulfillment of the requirements for the degree of Master of Science in Computer Science', { after: 500 }),
-  ctr(D.monthYear, { bold: true, after: 600 }),
+  ...blank(1),
+  ctr('Applied Software Project Report', { size: 36, bold: true, after: 300 }),
+  logo('logo_woolf', 'jpg', 2.20, 1.15, 260),
+  ctr('By', { after: 240 }),
+  ctr(D.name, { size: 30, bold: true, after: 360 }),
+  ctr('A Master’s Project Report submitted to Scaler Neovarsity - Woolf in partial fulfillment of the requirements for the degree of Master of Science in Computer Science', { after: 320 }),
+  ctr(D.monthYear, { bold: true, after: 260 }),
+  logo('logo_scaler', 'png', 2.42, 1.36, 300),
   ctr(`Scaler Mentee Email ID : ${D.email}`),
   ctr(`Thesis Supervisor : ${D.supervisor}`),
   ctr(`Date of Submission : ${D.submitDate}`),

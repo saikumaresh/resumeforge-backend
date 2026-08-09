@@ -80,7 +80,12 @@ management:
   endpoints:
     web:
       exposure:
-        include: health
+        # prometheus is scraped by infrastructure/monitoring/prometheus.yml;
+        # without it the worker panels on the Grafana dashboard stay empty.
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: worker-service
 
 logging:
   level:

@@ -11,12 +11,14 @@ import com.resumeforge.resume.repository.TailoredResumeRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.*;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Duration;
 import java.util.*;
 
 @Service
@@ -33,7 +35,15 @@ public class ResumeChatService {
     @Value("${ollama.api-key:}")
     private String apiKey;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    /**
+     * Timeouts are essential here: this call happens on a Tomcat request
+     * thread, so an unresponsive model endpoint on a bare RestTemplate would
+     * pin request threads until the pool is exhausted.
+     */
+    private final RestTemplate restTemplate = new RestTemplateBuilder()
+            .setConnectTimeout(Duration.ofSeconds(10))
+            .setReadTimeout(Duration.ofSeconds(60))
+            .build();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final InputSanitizer inputSanitizer;
     private final ChatGuardrailValidator outputValidator;

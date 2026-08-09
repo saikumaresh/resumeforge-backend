@@ -1,42 +1,33 @@
 package com.resumeforge.worker.llm;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.github.resilience4j.retry.annotation.Retry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 
 /**
- * ✅ PHASE 1.5 FIX: Circuit breaker pattern implemented for Ollama API.
+ * Builds the tailoring prompt and interprets the model's reply.
  *
- * Protects against cascading failures when Ollama is unavailable:
- * - Circuit opens after 50% failure rate (minimum 5 calls)
- * - Waits 30 seconds before half-open (attempt recovery)
- * - Falls back to generic resume tailoring while degraded
- * - Exponential backoff with 3 retries
+ * The HTTP call itself, along with the circuit breaker and retry policy that
+ * guard it, lives in {@link OllamaApiCaller}. A failed call raises
+ * {@link OllamaUnavailableException}; this class never substitutes generated
+ * content for a real result.
  */
 @Component
 public class OllamaClient {
 
     private static final Logger log = LoggerFactory.getLogger(OllamaClient.class);
 
-    @Value("${ollama.api-url}")
-    private String apiUrl;
-
     @Value("${ollama.model}")
     private String model;
 
-    @Value("${ollama.api-key:}")
-    private String apiKey;
+    private final OllamaApiCaller apiCaller;
 
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    public OllamaClient(OllamaApiCaller apiCaller) {
+        this.apiCaller = apiCaller;
+    }
 
     // ── System prompt ─────────────────────────────────────────────────────────
 
@@ -129,6 +120,17 @@ public class OllamaClient {
 
     // ── Public API ────────────────────────────────────────────────────────────
 
+    /**
+     * Tailors a master resume against a job description.
+     *
+     * On failure this propagates {@link OllamaUnavailableException} rather than
+     * returning substitute content. An earlier version answered a failed model
+     * call with a generic placeholder resume, which the consumer then stored and
+     * marked COMPLETED — so a user could be shown invented content, with a real
+     * ATS score computed over it, and had no way to tell it apart from a genuine
+     * result. Failing loudly lets TailoringConsumer mark the record FAILED, which
+     * is both truthful and recoverable through the retry endpoint.
+     */
     public String tailorResume(String masterResumeContent, String jobDescriptionContent) {
         log.info("[OLLAMA] Calling Ollama API for resume tailoring with model={}", model);
 
@@ -138,83 +140,8 @@ public class OllamaClient {
 
         String prompt = buildTailoringPrompt(masterTruncated, jdTruncated);
 
-        try {
-            // ✅ PHASE 1.5 FIX: Circuit breaker + retry protection
-            return callOllamaWithCircuitBreaker(prompt, masterTruncated);
-        } catch (OllamaUnavailableException e) {
-            log.warn("[CIRCUIT-BREAKER] Ollama circuit breaker open or service unavailable — using fallback");
-            return generateFallback(masterResumeContent);
-        } catch (Exception e) {
-            log.error("[OLLAMA] Unexpected error: {} — using fallback", e.getMessage(), e);
-            return generateFallback(masterResumeContent);
-        }
-    }
-
-    /**
-     * ✅ PHASE 1.5 FIX: Protected with circuit breaker and retry logic.
-     *
-     * Circuit breaker settings:
-     * - Opens after 50% failure rate (min 5 calls)
-     * - Waits 30 seconds before trying recovery (half-open)
-     * - Retries up to 3 times on 5xx errors
-     * - Falls back gracefully when degraded
-     *
-     * @param prompt The tailoring prompt to send
-     * @param masterContent Original resume (for fallback)
-     * @return Tailored resume JSON
-     * @throws OllamaUnavailableException if circuit is open or service unreachable
-     */
-    @CircuitBreaker(
-            name = "ollama-api",
-            fallbackMethod = "handleOllamaFailure"
-    )
-    @Retry(
-            name = "ollama-api",
-            fallbackMethod = "handleOllamaFailure"
-    )
-    private String callOllamaWithCircuitBreaker(String prompt, String masterContent) {
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put("model", model);
-        requestBody.put("messages", List.of(
-                Map.of("role", "system", "content", SYSTEM_PROMPT),
-                Map.of("role", "user",   "content", prompt)
-        ));
-        requestBody.put("stream", false);
-        requestBody.put("temperature", 0.2);  // Low — factual accuracy matters more than creativity
-        requestBody.put("max_tokens", 2000);
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        if (apiKey != null && !apiKey.isBlank()) {
-            headers.setBearerAuth(apiKey);
-        }
-
-        ResponseEntity<Map> response = restTemplate.postForEntity(
-                apiUrl, new HttpEntity<>(requestBody, headers), Map.class);
-
-        Map<String, Object> responseBody = response.getBody();
-        if (responseBody == null) {
-            log.warn("[GUARDRAIL] Null response from Ollama");
-            throw new OllamaUnavailableException("Ollama returned null response");
-        }
-
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> choices = (List<Map<String, Object>>) responseBody.get("choices");
-        @SuppressWarnings("unchecked")
-        Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
-        String content = (String) message.get("content");
-
-        log.info("[OLLAMA] Response received successfully");
-        return stripCodeFences(content);
-    }
-
-    /**
-     * Fallback method when circuit breaker is open or retries exhausted.
-     * Returns a generic tailored resume based on master content.
-     */
-    private String handleOllamaFailure(String prompt, String masterContent, Exception e) {
-        log.warn("[CIRCUIT-BREAKER] Ollama unavailable ({}): {}", e.getClass().getSimpleName(), e.getMessage());
-        throw new OllamaUnavailableException("Ollama service temporarily unavailable", e);
+        // Called on a separate bean so the Resilience4j proxy actually applies.
+        return stripCodeFences(apiCaller.call(SYSTEM_PROMPT, prompt));
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────
@@ -253,21 +180,4 @@ public class OllamaClient {
         return text;
     }
 
-    private String generateFallback(String masterContent) {
-        try {
-            String snippet = masterContent != null
-                    ? masterContent.substring(0, Math.min(300, masterContent.length()))
-                    : "Experienced professional";
-            Map<String, String> sections = new LinkedHashMap<>();
-            sections.put("summary",    "Experienced professional with a strong background in the relevant domain.");
-            sections.put("experience", snippet);
-            sections.put("skills",     "Available on request");
-            sections.put("education",  "Available on request");
-            return objectMapper.writeValueAsString(sections);
-        } catch (Exception e) {
-            log.warn("[GUARDRAIL] Fallback JSON generation failed: {}", e.getMessage());
-            return "{\"summary\":\"Experienced professional\",\"experience\":\"See attached resume\"," +
-                   "\"skills\":\"Available on request\",\"education\":\"Available on request\"}";
-        }
-    }
 }

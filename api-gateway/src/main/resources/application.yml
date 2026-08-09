@@ -7,6 +7,13 @@ spring:
   cloud:
     gateway:
       routes:
+        # Authentication must be reachable through the gateway, otherwise a
+        # client cannot obtain a token without bypassing it. Rate limiting for
+        # these paths is enforced by RateLimitFilter in resume-service.
+        - id: auth-service
+          uri: ${RESUME_SERVICE_URL:http://localhost:8081}
+          predicates:
+            - Path=/api/v1/auth/**
         - id: resume-service
           uri: ${RESUME_SERVICE_URL:http://localhost:8081}
           predicates:

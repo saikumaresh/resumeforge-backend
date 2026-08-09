@@ -100,7 +100,7 @@ public class ResumeService {
 
     public MasterResumeResponse getMasterResumeWithSections(UUID resumeId) {
         MasterResume masterResume = masterResumeRepository.findByIdWithSections(resumeId)
-                .orElseThrow(() -> new RuntimeException("Resume not found: " + resumeId));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Resume not found: " + resumeId));
         assertOwnership(masterResume.getUserId());
         return toMasterResumeResponse(masterResume);
     }
@@ -110,7 +110,7 @@ public class ResumeService {
         MDC.put("masterResumeId", masterResumeId.toString());
 
         MasterResume masterResume = masterResumeRepository.findByIdWithSections(masterResumeId)
-                .orElseThrow(() -> new RuntimeException("Master resume not found: " + masterResumeId));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Master resume not found: " + masterResumeId));
 
         // ── BOLA ownership check ──────────────────────────────────────────────
         UUID userId = masterResume.getUserId();
@@ -151,7 +151,7 @@ public class ResumeService {
         MDC.put("tailoredResumeId", tailoredResumeId.toString());
 
         TailoredResume tailoredResume = tailoredResumeRepository.findById(tailoredResumeId)
-                .orElseThrow(() -> new RuntimeException("Tailored resume not found: " + tailoredResumeId));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tailored resume not found: " + tailoredResumeId));
 
         if (tailoredResume.getStatus() != TailoredResume.TailoringStatus.FAILED) {
             throw new IllegalStateException("Can only retry FAILED tailoring jobs (current status: " + tailoredResume.getStatus() + ")");
@@ -159,7 +159,7 @@ public class ResumeService {
 
         // Re-build master content
         MasterResume masterResume = masterResumeRepository.findByIdWithSections(tailoredResume.getMasterResume().getId())
-                .orElseThrow(() -> new RuntimeException("Master resume not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Master resume not found"));
 
         assertOwnership(masterResume.getUserId());
 
@@ -188,7 +188,7 @@ public class ResumeService {
     public TailoredResumeResponse getTailoredResume(UUID tailoredResumeId) {
         TailoredResume resume = tailoredResumeRepository.findByIdWithSectionsAndScore(tailoredResumeId)
                 .orElseGet(() -> tailoredResumeRepository.findById(tailoredResumeId)
-                        .orElseThrow(() -> new RuntimeException("Tailored resume not found: " + tailoredResumeId)));
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tailored resume not found: " + tailoredResumeId)));
         assertOwnership(resume.getMasterResume().getUserId());
         return toTailoredResumeResponse(resume);
     }
@@ -209,7 +209,7 @@ public class ResumeService {
             }
         });
         TailoredResume resume = tailoredResumeRepository.findById(tailoredResumeId)
-                .orElseThrow(() -> new RuntimeException("Tailored resume not found: " + tailoredResumeId));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Tailored resume not found: " + tailoredResumeId));
         assertOwnership(resume.getMasterResume().getUserId());
 
         // Update existing sections content

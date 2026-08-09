@@ -286,7 +286,7 @@ front.push(
   tocLine('Deployment Flow', 33, 300),
   tocLine('Technologies Used', 37, 300),
   tocLine('Conclusion', 44, 300),
-  tocLine('References', 48, 300),
+  tocLine('References', 47, 300),
   pageBreak(),
 );
 

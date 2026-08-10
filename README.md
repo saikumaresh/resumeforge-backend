@@ -181,6 +181,8 @@ Stated explicitly rather than left for a reader to discover:
 | `tailored_resumes` / `tailored_resume_sections` | LLM output per job |
 | `ats_score_results` | Score breakdown per tailored resume |
 
+Three further tables are created by the migrations but mapped by no entity and touched by no code: `batch_requests` and `batch_items` (V3, abandoned batch feature) and `subscriptions` (V8, removed payment integration). A database built from V1–V8 therefore holds ten tables, not seven.
+
 Migrations `V1`–`V8` in `resume-service/src/main/resources/db/migration`. `spring.jpa.hibernate.ddl-auto=validate` — the schema is owned by Flyway, not Hibernate.
 
 ---

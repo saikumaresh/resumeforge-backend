@@ -564,7 +564,7 @@ body.push(
   p('The schema is owned by Flyway migrations V1 to V8 and is validated against the entity mapping at application startup, so a divergence between code and schema fails fast instead of silently corrupting data. Hibernate is configured with ddl-auto set to validate; it never alters the schema.'),
 
   sub('5.1 Schema described textually'),
-  p('Tables, with primary keys and the columns that carry meaning. Seven tables carry the domain; migration V8 also creates a subscriptions table left over from a removed payment integration, which no entity maps and no code writes to, so a database built from the full migration chain holds eight tables rather than seven:'),
+  p('Tables, with primary keys and the columns that carry meaning. Seven tables carry the domain, and the migration chain creates three more that nothing uses. Migration V3 adds batch_requests and batch_items for a batch-processing feature that was never built, and migration V8 recreates a subscriptions table left over from a removed payment integration after migration V7 had dropped it. No entity maps any of the three and no code reads or writes them, so a database built from the full chain holds ten tables rather than the seven the application needs:'),
 
   sub3('users'),
   li('id, uuid, Primary Key'),
@@ -935,6 +935,7 @@ body.push(
       ['Event publication is a dual write', 'The event is published inside the database transaction, so a broker failure after commit loses it. Remedied by a transactional outbox.'],
       ['Scoring logic is duplicated', 'The scorer exists in both services and the copies have diverged; only the untested worker copy runs. Remedied by extracting a shared module.'],
       ['Cross-service table writes', 'The worker writes to the resume service’s tables with native SQL, bypassing the optimistic lock. Remedied by routing writes through an owning service.'],
+      ['Dead tables in the migration chain', 'A database built from V1 to V8 holds three tables no entity maps and no code touches: batch_requests and batch_items from an abandoned batch feature, and subscriptions from a removed payment integration. They are harmless because ddl-auto is set to validate rather than update, but they should be removed by a further migration so the schema describes only what the system uses.'],
       ['Uneven test coverage', 'Measured line coverage is 84.0% on the gateway, 64.6% on the resume service and 28.6% on the worker, 55.0% across the three. The worker tests cover its scoring, guardrail and idempotency logic but not the Kafka consumer itself.'],
       ['Kubernetes manifests hold a plaintext password', 'infrastructure/kubernetes/resume-service/deployment.yaml and the worker equivalent set SPRING_DATASOURCE_PASSWORD to a literal value committed to the repository, which contradicts the environment-variable model the services themselves use. Remedied by a Kubernetes Secret or an external secrets store.'],
       ['Migrations are not exercised by tests', 'Tests run against H2 with the schema generated from entities, so the migration chain is unverified. Remedied by running migrations against PostgreSQL under Testcontainers.'],

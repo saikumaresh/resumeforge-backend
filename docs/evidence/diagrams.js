@@ -182,12 +182,12 @@ figures['fig_4_01_domain'] = () => {
   b += u.svg;
 
   const mr = uml(340, 40, 232, 'MasterResume',
-    ['- id: UUID', '- userId: UUID', '- title: String', '- summary: String', '- version: int  «@Version»'],
+    ['- id: UUID', '- userId: UUID', '- title: String', '- summary: String', '- version: Integer  «@Version»'],
     ['+ getSections(): List']);
   b += mr.svg;
 
   const mrs = uml(660, 40, 226, 'MasterResumeSection',
-    ['- id: UUID', '- sectionType: SectionType', '- content: String', '- position: int'],
+    ['- id: UUID', '- sectionType: SectionType', '- content: String', '- position: Integer'],
     ['+ getContent(): String']);
   b += mrs.svg;
 
@@ -197,17 +197,17 @@ figures['fig_4_01_domain'] = () => {
   b += jd.svg;
 
   const tr = uml(340, 300, 232, 'TailoredResume',
-    ['- id: UUID', '- masterResume: MasterResume', '- jobDescription: JobDescription', '- status: TailoringStatus', '- pdfPath: String'],
+    ['- id: UUID', '- masterResume: MasterResume', '- jobDescription: JobDescription', '- status: TailoringStatus', '- version: Integer «@Version»', '- pdfPath: String'],
     ['+ getStatus()']);
   b += tr.svg;
 
   const trs = uml(660, 300, 226, 'TailoredResumeSection',
-    ['- id: UUID', '- sectionType: SectionType', '- content: String'],
+    ['- id: UUID', '- sectionType: SectionType', '- content: String', '- position: Integer'],
     []);
   b += trs.svg;
 
   const ats = uml(340, 500, 232, 'ATSScoreResult',
-    ['- id: UUID', '- totalScore: int', '- keywordScore: int', '- sectionScore: int', '- actionVerbScore: int'],
+    ['- id: UUID', '- totalScore: Integer', '- keywordScore: Integer', '- sectionScore: Integer', '- actionVerbScore: Integer', '- missingKeywords: String'],
     []);
   b += ats.svg;
 
@@ -219,7 +219,7 @@ figures['fig_4_01_domain'] = () => {
   b += txt(616, 342, '1 : m', 11);
   b += plain(456, 420, 456, 500); b += txt(478, 465, '1 : 1', 11, 'start');
   b += plain(145, 210, 145, 300); b += txt(167, 258, 'owns', 11, 'start');
-  return svg(940, 620, b);
+  return svg(940, 680, b);
 };
 
 /* ── Fig 4.02 — Layered / service class diagram ───────────────── */
@@ -279,9 +279,9 @@ figures['fig_5_01_er'] = () => {
   const e2 = ent(330, 40, 232, 'master_resumes', ['PK id : uuid', 'FK user_id : uuid', 'title, summary', 'version : int', 'created_at']);
   const e3 = ent(650, 40, 250, 'master_resume_sections', ['PK id : uuid', 'FK master_resume_id NOT NULL', 'section_type : enum', 'content : text', 'position : int']);
   const e4 = ent(40, 270, 210, 'job_descriptions', ['PK id : uuid', 'FK user_id : uuid', 'company_name, job_title', 'description : text', 'required_skills']);
-  const e5 = ent(330, 270, 232, 'tailored_resumes', ['PK id : uuid', 'FK master_resume_id', 'FK job_description_id', 'status : enum', 'pdf_path, version']);
-  const e6 = ent(650, 270, 250, 'tailored_resume_sections', ['PK id : uuid', 'FK tailored_resume_id', 'section_type : enum', 'content : text']);
-  const e7 = ent(330, 470, 232, 'ats_score_results', ['PK id : uuid', 'FK tailored_resume_id UQ', 'total_score : int', 'keyword_score, section_score', 'action_verb_score']);
+  const e5 = ent(330, 270, 232, 'tailored_resumes', ['PK id : uuid', 'FK master_resume_id', 'FK job_description_id', 'status : enum', 'pdf_path', 'version : int  «@Version»']);
+  const e6 = ent(650, 270, 250, 'tailored_resume_sections', ['PK id : uuid', 'FK tailored_resume_id', 'section_type : enum', 'content : text', 'position : int']);
+  const e7 = ent(330, 470, 232, 'ats_score_results', ['PK id : uuid', 'FK tailored_resume_id UQ', 'total_score : int', 'keyword_score, section_score', 'action_verb_score', 'missing_keywords : text', 'created_at']);
   [e1, e2, e3, e4, e5, e6, e7].forEach((e) => { b += e.s; });
 
   const crow = (x1, y1, x2, y2, l, r) => plain(x1, y1, x2, y2) + txt((x1 + x2) / 2, y1 - 7, `${l} — ${r}`, 11);
@@ -291,7 +291,7 @@ figures['fig_5_01_er'] = () => {
   b += crow(562, 325, 650, 325, '1', 'm');
   b += plain(446, 385, 446, 470); b += txt(470, 432, '1 — 1', 11, 'start');
   b += plain(145, 155, 145, 270); b += txt(168, 216, '1 — m', 11, 'start');
-  return svg(950, 600, b);
+  return svg(950, 660, b);
 };
 
 /* ── Fig 6.01 — Request flow sequence ─────────────────────────── */
@@ -402,7 +402,7 @@ figures['fig_7_01_aws'] = () => {
 let n = 0;
 for (const [name, fn] of Object.entries(figures)) {
   const s = fn();
-  const png = new Resvg(s, { fitTo: { mode: 'width', value: 1600 }, font: { loadSystemFonts: true } })
+  const png = new Resvg(s, { fitTo: { mode: 'width', value: 1180 }, font: { loadSystemFonts: true } })
     .render().asPng();
   fs.writeFileSync(path.join(OUT, name + '.png'), png);
   console.log(`${name}.png  ${Math.round(png.length / 1024)} KB`);

@@ -304,7 +304,7 @@ front.push(
       ['3.04', 'REST API surface', '17'],
       ['4.01', 'Design patterns used in the low-level design', '21'],
       ['5.01', 'Database tables and their purpose', '24'],
-      ['5.02', 'Foreign key constraints', '24'],
+      ['5.02', 'Foreign key constraints', '25'],
       ['5.03', 'Cardinality of relations', '25'],
       ['6.01', 'N+1 optimisation benchmark results', '31'],
       ['8.01', 'Automated test suites', '41'],

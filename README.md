@@ -125,7 +125,7 @@ Asynchronous operations return **202 Accepted** with a `PENDING` record; poll th
 - **Authorization** — every data-touching service method calls `ResumeService.assertOwnership()`, which compares the resource owner against the JWT principal and returns 403 on mismatch. Verified by `BOLATest`, which drives two real users over HTTP.
 - **Rate limiting** — sliding window on `/auth/login` (10/min) and `/auth/register` (5/min)
 - **Injection** — all repository access is parameterised JPQL; there are no native query strings built from user input in `resume-service`
-- **Secrets** — no credentials are committed. Every production value resolves from an environment variable and fails closed if unset.
+- **Secrets** — every production value in the services resolves from an environment variable and fails closed if unset; no credential is committed in application code or config. The Kubernetes manifests are the exception and still carry a plaintext database password — see [Known limitations](#known-limitations).
 - **Error handling** — `GlobalExceptionHandler` returns a correlation ID rather than a stack trace; `server.error.include-message: never`
 
 ---
@@ -160,6 +160,7 @@ mvn test && open resume-service/target/site/jacoco/index.html   # coverage
 Stated explicitly rather than left for a reader to discover:
 
 - **PDF export is implemented but not wired.** `ResumePDFGenerator` works, but `TailoringConsumer` sets `pdfPath = null` because no object storage is configured, so `pdfDownloadUrl` is absent from responses.
+- **Kubernetes manifests hold a plaintext password.** `infrastructure/kubernetes/*/deployment.yaml` sets `SPRING_DATASOURCE_PASSWORD` to a literal value, contradicting the environment-variable model the services use. Should be a Kubernetes Secret.
 - **Scoring logic is duplicated.** `ATSScorer` exists in both services and the copies have diverged. The production copy in `worker-service` is now tested; the `resume-service` copy is dead code and should be removed once the logic is extracted into a shared module.
 - **Kafka publish happens inside the database transaction** — a dual-write with no outbox, so a broker failure after commit loses the event. `retryTailoring` is the manual recovery path.
 - **Kubernetes manifests are illustrative.** No manifests exist for PostgreSQL, Kafka or Redis, and no images are published to a registry.

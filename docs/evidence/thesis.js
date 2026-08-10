@@ -566,7 +566,7 @@ body.push(
   p('The schema is owned by Flyway migrations V1 to V8 and is validated against the entity mapping at application startup, so a divergence between code and schema fails fast instead of silently corrupting data. Hibernate is configured with ddl-auto set to validate; it never alters the schema.'),
 
   sub('5.1 Schema described textually'),
-  p('Tables, with primary keys and the columns that carry meaning:'),
+  p('Tables, with primary keys and the columns that carry meaning. Seven tables carry the domain; migration V8 also creates a subscriptions table left over from a removed payment integration, which no entity maps and no code writes to, so a database built from the full migration chain holds eight tables rather than seven:'),
 
   sub3('users'),
   li('id, uuid, Primary Key'),
@@ -588,7 +588,7 @@ body.push(
   sub3('master_resume_sections'),
   li('id, uuid, Primary Key'),
   li('master_resume_id, uuid, Foreign Key to master_resumes(id), NOT NULL'),
-  li('section_type, enum (SUMMARY, EXPERIENCE, EDUCATION, SKILLS, PROJECTS, OTHER)'),
+  li('section_type, enum (SUMMARY, EXPERIENCE, EDUCATION, SKILLS, PROJECTS, CERTIFICATIONS, OTHER)'),
   li('content, text'),
   li('position, integer, ordering within the resume'),
 
@@ -619,6 +619,8 @@ body.push(
   li('tailored_resume_id, uuid, Foreign Key to tailored_resumes(id), unique'),
   li('total_score, integer'),
   li('keyword_score, section_score, action_verb_score, integer'),
+  li('missing_keywords, text, the posting terms absent from the tailored resume'),
+  li('created_at, timestamp'),
 
   tableCaption('5.01', 'Database tables and their purpose'),
   table(
@@ -683,7 +685,7 @@ body.push(
   p('The defect is worth recording because of how it presented. No exception was raised, no test failed, and the API returned a success response every time. It was found by reasoning about cascade semantics instead of by observing a failure. The correction was to add orphanRemoval to the association, and the general lesson taken from it is that a successful API response is not evidence of a correct write.'),
 
   sub3('Query design and the N+1 problem'),
-  p('Loading a resume and subsequently reading its sections issues one query for the parent and one for each child collection. The N+1 select problem. Three repository methods declare an explicit LEFT JOIN FETCH so that a parent and its collection are retrieved in a single statement. The measured effect of this is presented as a benchmark in Section 6.'),
+  p('Loading a resume and subsequently reading its sections issues one query for the parent and one for each child collection. The N+1 select problem. Five repository methods declare an explicit LEFT JOIN FETCH so that a parent and its collection are retrieved in a single statement. The measured effect of this is presented as a benchmark in Section 6.'),
   pageBreak(),
 );
 
@@ -748,7 +750,7 @@ body.push(
   ),
   spacerAfterTable(),
   ...figure('fig_6_02_benchmark', '6.02', 'N+1 optimisation: queries and latency, before and after'),
-  p('The statement count falls from 31 to 1. The original 31 were one query for the parent rows plus one for each resume, and the fetch join collapses them into a single statement. Median latency falls from 3.487 ms to 1.126 ms, an improvement of 67.7%. The proportional gain would be substantially larger against a networked database, because each eliminated statement there costs a network round trip instead of an in-process call.'),
+  p('The statement count falls from 31 to 1. The original 31 were one query for the parent rows plus one for each resume, and the fetch join collapses them into a single statement. Median latency in the run reported here falls from 3.487 ms to 1.126 ms, an improvement of 67.7%. Absolute timings vary between runs and machines, so a re-run will not reproduce these figures exactly; the statement count is the stable measure. The proportional gain would be substantially larger against a networked database, because each eliminated statement there costs a network round trip instead of an in-process call.'),
   p('The result also scales differently. The lazy implementation is O(N) in database round trips, so its cost grows with the number of resumes a user owns; the fetch-joined implementation is O(1) in round trips regardless. The optimisation therefore matters most for the users who have used the product most, which is the correct place for it to matter.'),
   pageBreak(),
 );
@@ -784,7 +786,7 @@ body.push(
   p('Kafka is provided by Amazon MSK instead of self-managed brokers, because broker operation (rebalancing, patching, storage management) is substantial work that is not part of this project’s subject matter.'),
 
   sub('7.6 Secrets and supporting services'),
-  p('Database credentials and the JWT signing secret are held in AWS Secrets Manager and injected at container start, never baked into an image or committed. This matches the application’s existing configuration model, in which every production value resolves from an environment variable and the application fails to start if a required one is absent. S3 provides object storage for generated PDF documents; as Section 9 records, PDF generation is implemented but not currently wired, and the absence of object storage is precisely why.'),
+  p('Database credentials and the JWT signing secret would be held in AWS Secrets Manager and injected at container start rather than baked into an image. This matches the application’s own configuration model, in which every production value resolves from an environment variable and the service fails to start if a required one is absent. The Kubernetes manifests in the repository do not yet meet that standard, as Section 9.3 records. S3 provides object storage for generated PDF documents; as Section 9 records, PDF generation is implemented but not currently wired, and the absence of object storage is precisely why.'),
 
   sub('7.7 Scaling characteristics'),
   p('The two services scale on different signals, which is the operational return on having separated them. The resume service is bound by request rate and database connections and scales horizontally behind the load balancer; because authentication is stateless, any instance can serve any request and adding one requires no session migration. The worker service is bound by model throughput and scales on Kafka consumer lag, the count of events not yet processed. That distinction is the point: a backlog of tailoring jobs adds worker instances without adding API instances that would sit idle.'),
@@ -933,6 +935,7 @@ body.push(
       ['Scoring logic is duplicated', 'The scorer exists in both services and the copies have diverged; only the untested worker copy runs. Remedied by extracting a shared module.'],
       ['Cross-service table writes', 'The worker writes to the resume service’s tables with native SQL, bypassing the optimistic lock. Remedied by routing writes through an owning service.'],
       ['Uneven test coverage', 'Measured line coverage is 64.6% on the resume service and 28.6% on the worker, 53.1% across the two. The API gateway has no suite, and the worker tests cover its scoring, guardrail and idempotency logic but not the Kafka consumer itself.'],
+      ['Kubernetes manifests hold a plaintext password', 'infrastructure/kubernetes/resume-service/deployment.yaml and the worker equivalent set SPRING_DATASOURCE_PASSWORD to a literal value committed to the repository, which contradicts the environment-variable model the services themselves use. Remedied by a Kubernetes Secret or an external secrets store.'],
       ['Migrations are not exercised by tests', 'Tests run against H2 with the schema generated from entities, so the migration chain is unverified. Remedied by running migrations against PostgreSQL under Testcontainers.'],
     ],
     [3, 7],

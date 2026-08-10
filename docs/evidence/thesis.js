@@ -244,13 +244,13 @@ front.push(
 front.push(
   chapter('DECLARATION'),
   ...blank(1),
-  p(`I confirm that this project report, submitted to fulfill the requirements for the Master of Science in Computer Science degree, completed by me from ${D.moduleStart} to ${D.moduleEnd}, is the result of my own individual endeavor. The Project has been made on my own under the guidance of my supervisor with proper acknowledgement and without plagiarism. Any contributions from external sources or individuals, including the use of AI tools, are appropriately acknowledged through citation. By making this declaration, I acknowledge that any violation of this statement constitutes academic misconduct. I understand that such misconduct may lead to expulsion from the program and/or disqualification from receiving the degree.`),
+  p(`I confirm that this project report, submitted to fulfill the requirements for the Master of Science in Computer Science degree, completed by me is the result of my own individual endeavor. The Project has been made on my own under the guidance of my supervisor with proper acknowledgement and without plagiarism. Any contributions from external sources or individuals, including the use of AI tools, are appropriately acknowledged through citation. By making this declaration, I acknowledge that any violation of this statement constitutes academic misconduct. I understand that such misconduct may lead to expulsion from the program and/or disqualification from receiving the degree.`),
   ...blank(7),
   ctr(D.name, { bold: true, after: 400 }),
   new Paragraph({
     alignment: AlignmentType.LEFT,
     spacing: { line: LINE15 },
-    children: [t('Signature of the Candidate: ……………………………                    Date: ……………………')],
+    children: [t(`Signature of the Candidate:                    Date: ${D.submitDate}`)],
   }),
   pageBreak(),
 );
@@ -293,7 +293,6 @@ front.push(
 /* List of Tables */
 front.push(
   chapter('List of Tables'),
-  p('(To be written sequentially as they appear in the text)', { align: AlignmentType.LEFT, italics: true }),
   ...blank(1),
   table(
     ['Table No.', 'Title', 'Page No.'],
@@ -319,7 +318,6 @@ front.push(
 /* List of Figures */
 front.push(
   chapter('List of Figures'),
-  p('(List of Images, Graphs, Charts sequentially as they appear in the text)', { align: AlignmentType.LEFT, italics: true }),
   ...blank(1),
   table(
     ['Figure No.', 'Title', 'Page No.'],

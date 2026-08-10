@@ -349,7 +349,7 @@ body.push(
   chapter('Abstract'),
   p('ResumeForge is an event-driven backend system that adapts a candidate’s master resume to a specific job description using a large language model, and then scores the adapted document for the keyword coverage that applicant tracking systems measure. The problem it addresses is a practical one: most job applications are filtered by software before a person reads them, and that software matches on vocabulary instead of on substance, so a well-qualified candidate is routinely rejected for using different words from the posting.'),
   p('The system is built as three Spring Boot services on Java 21. Because language model inference takes tens of seconds and fails unpredictably, the tailoring workload is deliberately separated from the HTTP request cycle. The API validates and authorises a request, persists a record in a PENDING state, publishes an event to Apache Kafka and returns 202 Accepted immediately. A worker service consumes that event, invokes the model, validates the returned content against a schema, computes the score deterministically in code, and writes the result back. Persistence is PostgreSQL with Flyway-managed migrations; Redis provides consumer idempotency so that Kafka’s at-least-once delivery cannot cause a duplicate model invocation.'),
-  p('The results are a working system of fourteen REST endpoints with stateless JWT authentication and object-level authorisation enforced at the service layer, verified by an automated cross-tenant test suite. The project carries 133 automated tests with JaCoCo-measured coverage of 64.6% of lines on the API service and 53.1% across the two tested modules. A measured optimisation of the resume listing path reduced the query count from 31 to 1 and median latency from 3.487 ms to 1.126 ms.'),
+  p('The results are a working system of fourteen REST endpoints with stateless JWT authentication and object-level authorisation enforced at the service layer, verified by an automated cross-tenant test suite. The project carries 155 automated tests with JaCoCo-measured coverage of 84.0% of lines on the gateway, 64.6% on the API service and 55.0% across the three modules. A measured optimisation of the resume listing path reduced the query count from 31 to 1 and median latency from 3.487 ms to 1.126 ms.'),
   p('The wider applicability is that the pattern demonstrated here (treating a slow, non-deterministic external model as an unreliable asynchronous dependency behind a durable queue, with schema validation on its output) generalises to any system integrating generative AI into a transactional application, which is now a common requirement across recruitment technology, document processing, customer support and healthcare administration.'),
   pageBreak(),
 );
@@ -843,12 +843,15 @@ body.push(
 
   sub('8.9 Testing: JUnit 5, Mockito and JaCoCo'),
   p('JUnit 5 provides the test framework, Mockito supplies the test doubles, Spring Boot Test provides context and MockMvc support for driving the HTTP layer without a running server, and JaCoCo measures coverage by instrumenting bytecode during the test run. The choice to measure coverage instead of estimate it is deliberate: an earlier revision of this project documentation asserted a coverage figure that had never been measured and was wrong by an order of magnitude.'),
-  p('The suite comprises 133 tests, all passing, and is verified reproducibly. The committed tree is exported with git archive into a clean directory and built there, so the result reflects the repository rather than a developer machine.'),
+  p('The suite comprises 155 tests, all passing, and is verified reproducibly. The committed tree is exported with git archive into a clean directory and built there, so the result reflects the repository rather than a developer machine.'),
 
   tableCaption('8.01', 'Automated test suites'),
   table(
     ['Suite', 'Tests', 'What it verifies'],
     [
+      ['JwtUtilTest (gateway)', '9', 'Token checking at the edge: a token signed with another secret, an expired token, an unsigned token and malformed input are each refused, and claims cannot be read from a forged token'],
+      ['JwtGatewayConfigTest (gateway)', '6', 'Which paths are reachable without a token, including a test recording that prefix matching is broader than intended'],
+      ['JwtAuthFilterTest (gateway)', '7', 'The filter refuses a request with no token, a wrong scheme, a forged token or an expired one, and attaches the caller identity header when the token is valid'],
       ['ResumeServiceTest', '17', 'Service logic in isolation with mocked collaborators: a refused ownership check performs no writes, the published event carries the correct identifiers and assembled content, the retry state machine rejects records that are not FAILED'],
       ['BOLATest', '11', 'Cross-tenant authorisation over HTTP: own-data access succeeds, every cross-user read, write, list and chat attempt returns 403, and missing or tampered tokens return 401'],
       ['AuthServiceTest', '13', 'Registration, duplicate-email conflict, email normalisation, BCrypt hashing and login failure paths'],
@@ -932,7 +935,7 @@ body.push(
       ['Event publication is a dual write', 'The event is published inside the database transaction, so a broker failure after commit loses it. Remedied by a transactional outbox.'],
       ['Scoring logic is duplicated', 'The scorer exists in both services and the copies have diverged; only the untested worker copy runs. Remedied by extracting a shared module.'],
       ['Cross-service table writes', 'The worker writes to the resume service’s tables with native SQL, bypassing the optimistic lock. Remedied by routing writes through an owning service.'],
-      ['Uneven test coverage', 'Measured line coverage is 64.6% on the resume service and 28.6% on the worker, 53.1% across the two. The API gateway has no suite, and the worker tests cover its scoring, guardrail and idempotency logic but not the Kafka consumer itself.'],
+      ['Uneven test coverage', 'Measured line coverage is 84.0% on the gateway, 64.6% on the resume service and 28.6% on the worker, 55.0% across the three. The worker tests cover its scoring, guardrail and idempotency logic but not the Kafka consumer itself.'],
       ['Kubernetes manifests hold a plaintext password', 'infrastructure/kubernetes/resume-service/deployment.yaml and the worker equivalent set SPRING_DATASOURCE_PASSWORD to a literal value committed to the repository, which contradicts the environment-variable model the services themselves use. Remedied by a Kubernetes Secret or an external secrets store.'],
       ['Migrations are not exercised by tests', 'Tests run against H2 with the schema generated from entities, so the migration chain is unverified. Remedied by running migrations against PostgreSQL under Testcontainers.'],
     ],

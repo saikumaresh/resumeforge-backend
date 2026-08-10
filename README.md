@@ -133,11 +133,11 @@ Asynchronous operations return **202 Accepted** with a `PENDING` record; poll th
 ## Testing
 
 ```bash
-mvn test                                  # 133 tests
+mvn test                                  # 155 tests
 mvn test && open resume-service/target/site/jacoco/index.html   # coverage
 ```
 
-**Current state — 133 tests, 0 failures, 0 errors:**
+**Current state — 155 tests, 0 failures, 0 errors:**
 
 | Suite | Tests | Covers |
 |-------|-------|--------|
@@ -150,8 +150,11 @@ mvn test && open resume-service/target/site/jacoco/index.html   # coverage
 | `ATSScorerTest` (worker) | 18 | The scorer that actually runs in production |
 | `TailoringGuardrailValidatorTest` | 14 | LLM output validation and rejection paths |
 | `IdempotencyServiceTest` | 7 | Redis-backed duplicate suppression |
+| `JwtUtilTest` (gateway) | 9 | Token validation at the edge: forged, expired, unsigned, malformed |
+| `JwtGatewayConfigTest` (gateway) | 6 | Which paths are reachable without a token |
+| `JwtAuthFilterTest` (gateway) | 7 | 401 paths, and the `X-User-Id` header added on success |
 
-**Measured coverage (JaCoCo):** `resume-service` 64.6% line, `worker-service` 28.6% line, 53.1% across the two. `api-gateway` has no test suite.
+**Measured coverage (JaCoCo):** `api-gateway` 84.0% line, `resume-service` 64.6% line, `worker-service` 28.6% line, 55.0% across all three.
 
 ---
 
@@ -163,6 +166,7 @@ Stated explicitly rather than left for a reader to discover:
 - **Kubernetes manifests hold a plaintext password.** `infrastructure/kubernetes/*/deployment.yaml` sets `SPRING_DATASOURCE_PASSWORD` to a literal value, contradicting the environment-variable model the services use. Should be a Kubernetes Secret.
 - **Scoring logic is duplicated.** `ATSScorer` exists in both services and the copies have diverged. The production copy in `worker-service` is now tested; the `resume-service` copy is dead code and should be removed once the logic is extracted into a shared module.
 - **Kafka publish happens inside the database transaction** — a dual-write with no outbox, so a broker failure after commit loses the event. `retryTailoring` is the manual recovery path.
+- **The gateway's unprotected-route check matches on prefixes.** `JwtGatewayConfig.isUnprotected()` uses `String.startsWith`, so a path that merely begins with an open route is let through without a token. No route in the system is shaped that way today, and `JwtGatewayConfigTest` records the behaviour; the fix is to match whole path segments.
 - **Kubernetes manifests are illustrative.** No manifests exist for PostgreSQL, Kafka or Redis, and no images are published to a registry.
 
 ---

@@ -1,0 +1,10 @@
+=== N+1 BENCHMARK ===================================================
+dataset                     : 30 resumes x 6 sections
+iterations                  : 5 warmup, 20 measured (median)
+---------------------------------------------------------------------
+findByUserId (lazy)         :  31 queries     4.647 ms
+findByUserIdWithSections    :   1 queries     1.073 ms
+---------------------------------------------------------------------
+query reduction             : 31 -> 1  (31.0x fewer)
+latency reduction           : 4.647 ms -> 1.073 ms  (76.9% faster)
+=====================================================================
